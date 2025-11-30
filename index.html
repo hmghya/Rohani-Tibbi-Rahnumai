@@ -1,0 +1,192 @@
+
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>روحانی و طبی رہنمائی</title>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      /* Load Jameel Noori Nastaleeq Kasheeda & Regular from CDN */
+      @font-face {
+        font-family: 'Jameel Noori Nastaleeq Kasheeda';
+        src: local('Jameel Noori Nastaleeq Kasheeda'),
+             url('https://cdn.jsdelivr.net/gh/lateef-sagar/Urdu-Fonts@main/JameelNooriNastaleeqKasheeda.ttf') format('truetype');
+        font-display: swap;
+      }
+      
+      @font-face {
+        font-family: 'Jameel Noori Nastaleeq';
+        src: local('Jameel Noori Nastaleeq'),
+             url('https://cdn.jsdelivr.net/gh/lateef-sagar/Urdu-Fonts@main/JameelNooriNastaleeq.ttf') format('truetype');
+        font-display: swap;
+      }
+
+      :root {
+        --primary-emerald: #059669;
+        --soft-cream: #fffdf5;
+      }
+      
+      body {
+        /* Priority: Kasheeda -> Regular -> Noto -> Serif */
+        font-family: 'Jameel Noori Nastaleeq Kasheeda', 'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', serif;
+        background-color: #ecfdf5; /* Soft Mint/Emerald Base */
+        background-image: 
+          radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
+          radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
+          url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23059669' fill-opacity='0.04'%3E%3Cpath d='M50 50c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10s-10-4.477-10-10 4.477-10 10-10zM10 10c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10S0 25.523 0 20s4.477-10 10-10zm10 8c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8zm40 40c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z' /%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        background-attachment: fixed;
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+        color: #1f2937;
+      }
+      
+      /* Enhanced Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f3f4f6;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #10b981; /* Emerald thumb */
+        border-radius: 20px;
+        border: 2px solid #f3f4f6;
+      }
+      
+      /* Typography Polish for Urdu Text Blocks (Reading) */
+      .ur-text, p, li, span, h1, h2, h3, h4, h5, h6 {
+        line-height: 2.4 !important; /* Increased for better readability */
+        word-spacing: 0.15rem !important;
+      }
+
+      /* Specific Polish for Inputs & Textareas (Writing) */
+      input, textarea, button, select {
+        font-family: inherit !important; /* Ensure inputs use the correct font */
+        line-height: 2.5 !important; /* Significant line height for Urdu characters */
+        word-spacing: 0.1rem !important;
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+        font-size: 1.1rem !important;
+      }
+
+      /* Enforce height for inputs to prevent clipping of tall letters like Alif/Laam */
+      input[type="text"], input[type="tel"], input[type="email"], input[type="date"], input[type="number"], input[type="time"] {
+        min-height: 60px !important;
+        height: auto !important;
+      }
+
+      /* Animations */
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      .animate-fade-in-up {
+        animation: fadeInUp 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      }
+      
+      .animate-fade-in {
+        animation: fadeInUp 0.5s ease-out forwards;
+      }
+
+      /* Glass Effect Utilities */
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.90);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+      }
+
+      /* Card Hover Effects */
+      .hover-lift {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+      .hover-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+
+      /* PRINT STYLES - ROBUST */
+      @media print {
+        /* Reset Body */
+        body, html {
+          height: auto !important;
+          overflow: visible !important;
+          background: white !important;
+        }
+
+        /* Hide Everything by default */
+        body * {
+          visibility: hidden;
+        }
+
+        /* Show only the specific element marked for printing */
+        .print-me, 
+        .print-me * {
+          visibility: visible !important;
+        }
+
+        /* Position printable content at absolute top */
+        .print-me {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: white !important;
+          color: black !important;
+          z-index: 99999;
+          box-shadow: none !important;
+          border: none !important;
+        }
+
+        /* Hide elements explicitly marked with no-print */
+        .no-print {
+          display: none !important;
+        }
+
+        /* Ensure colors print correctly */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        
+        /* Hide scrollbars */
+        ::-webkit-scrollbar {
+          display: none;
+        }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "react-markdown": "https://aistudiocdn.com/react-markdown@^10.1.0",
+    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1",
+    "jspdf": "https://aistudiocdn.com/jspdf@^2.5.1"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

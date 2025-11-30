@@ -1,0 +1,9 @@
+{
+  "name": "Rohani & Tibbi Rahnumai",
+  "description": "A comprehensive spiritual and medical guidance application providing numerology, horoscope, medical diagnosis via advanced technology, and spiritual remedies in Urdu.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
