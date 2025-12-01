@@ -5,17 +5,18 @@ const getAiClient = () => {
   let apiKey: string | undefined;
   
   try {
-    // Safe access to process.env for environments where process might not be defined
-    if (typeof process !== 'undefined' && process.env) {
-      apiKey = process.env.API_KEY;
-    }
+    // Direct access to process.env.API_KEY is preferred for build tools (Vite/Webpack) 
+    // to correctly replace the string with the actual key during build.
+    // The try-catch block prevents a crash if 'process' is not defined in the browser runtime.
+    // @ts-ignore
+    apiKey = process.env.API_KEY;
   } catch (e) {
-    console.error("Error accessing environment variables:", e);
+    // If process is not defined and replacement didn't happen
+    console.debug("Could not read process.env.API_KEY directly", e);
   }
 
   if (!apiKey) {
-    // Fallback: Check if it's injected globally or via import.meta (if supported in future)
-    console.error("API Key is missing. Please ensure the API_KEY environment variable is set in your build or hosting configuration.");
+    console.error("API Key is missing. Please ensure the API_KEY environment variable is set.");
     throw new Error("API Key is required");
   }
 
@@ -38,6 +39,22 @@ const SYSTEM_INSTRUCTION = `
 ہمیشہ یہ نوٹ لکھیں: "یہ معلومات صرف عارضی ہیں ۔ سنجیدہ صورت حال میں اپنے معالج سے رابطہ کریں"
 `;
 
+// Helper for error messages
+const getFriendlyErrorMessage = (error: any): string => {
+    const msg = error?.message?.toLowerCase() || '';
+    
+    if (msg.includes('api key') || msg.includes('unauthorized') || msg.includes('403') || msg.includes('permission denied')) {
+        return "سرور کی کنفیگریشن میں مسئلہ ہے (API Key/Domain Restriction)۔ براہ کرم ایڈمن سے رابطہ کریں۔";
+    }
+    if (msg.includes('quota') || msg.includes('429')) {
+        return "سرور پر لوڈ زیادہ ہے (Quota Exceeded)۔ براہ کرم تھوڑی دیر بعد کوشش کریں۔";
+    }
+    if (msg.includes('fetch') || msg.includes('network') || msg.includes('internet')) {
+        return "انٹرنیٹ کنکشن کا مسئلہ ہے۔ براہ کرم اپنا نیٹ ورک چیک کریں۔";
+    }
+    return "سرور میں فنی خرابی ہے (Technical Error)۔ براہ کرم کچھ دیر بعد کوشش کریں۔";
+};
+
 export const generateSpiritualResponse = async (prompt: string): Promise<string> => {
   try {
     const ai = getAiClient();
@@ -51,12 +68,8 @@ export const generateSpiritualResponse = async (prompt: string): Promise<string>
     });
     return response.text || "معذرت، کوئی جواب موصول نہیں ہوا۔ براہ کرم دوبارہ کوشش کریں۔";
   } catch (error: any) {
-    console.error("Error generating response:", error);
-    // Provide a more helpful error message if possible
-    if (error.message?.includes('API Key')) {
-        return "سرور کی کنفیگریشن میں مسئلہ ہے (API Key Missing)۔ براہ کرم ایڈمن سے رابطہ کریں۔";
-    }
-    return "سرور میں فنی خرابی ہے یا انٹرنیٹ کا مسئلہ ہے۔ براہ کرم کچھ دیر بعد کوشش کریں۔";
+    console.error("GenAI Error:", error);
+    return getFriendlyErrorMessage(error);
   }
 };
 
@@ -67,20 +80,16 @@ export const analyzeImageWithText = async (prompt: string, base64Image: string):
     let mimeType = 'image/jpeg';
     let data = base64Image;
 
-    // Parse Data URL to extract correct MIME type
     const match = base64Image.match(/^data:(.+);base64,(.+)$/);
     if (match) {
       mimeType = match[1];
       data = match[2];
     } else {
-      // Fallback for raw base64 or simple split
       const parts = base64Image.split(',');
       if (parts.length === 2) {
          data = parts[1];
          const mimeMatch = parts[0].match(/:(.*?);/);
-         if (mimeMatch) {
-             mimeType = mimeMatch[1];
-         }
+         if (mimeMatch) mimeType = mimeMatch[1];
       }
     }
 
@@ -89,30 +98,19 @@ export const analyzeImageWithText = async (prompt: string, base64Image: string):
       contents: {
         parts: [
           { text: prompt },
-          {
-            inlineData: {
-              mimeType: mimeType,
-              data: data
-            }
-          }
+          { inlineData: { mimeType, data } }
         ]
       },
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-      }
+      config: { systemInstruction: SYSTEM_INSTRUCTION }
     });
     return response.text || "تصویر کا تجزیہ کرنے میں ناکامی ہوئی۔";
   } catch (error: any) {
-    console.error("Error analyzing image:", error);
-    if (error.message?.includes('API Key')) {
-        return "سرور کی کنفیگریشن میں مسئلہ ہے (API Key Missing)۔";
-    }
-    return "تصویر پروسیس کرنے میں خرابی پیش آئی۔";
+    console.error("Image Analysis Error:", error);
+    return getFriendlyErrorMessage(error);
   }
 };
 
 export const getNumerologyAnalysis = async (data: any, topic: string = 'general', extraInput: string = ''): Promise<string> => {
-  // Helper to check if data is provided
   const val = (v: string) => v && v.trim() !== '' ? v : null;
 
   const baseInfo = `
@@ -128,7 +126,6 @@ export const getNumerologyAnalysis = async (data: any, topic: string = 'general'
   let specificPrompt = "";
 
   switch (topic) {
-    // --- New Relations Features ---
     case 'relation_father':
         specificPrompt = `
         موضوع: **والد صاحب کے ساتھ مناسبت (Compatibility with Father)**
@@ -158,8 +155,6 @@ export const getNumerologyAnalysis = async (data: any, topic: string = 'general'
         3. کیا مل کر کاروبار کرنا چاہیے؟
         `;
         break;
-    
-    // --- Business & Career ---
     case 'business_suitability':
         specificPrompt = `
         موضوع: **کاروبار اور کیریئر (Business & Career Analysis)**
@@ -169,8 +164,6 @@ export const getNumerologyAnalysis = async (data: any, topic: string = 'general'
         4. رزق میں برکت کا عددی راز۔
         `;
         break;
-
-    // --- Timeline Analysis (Past, Present, Future) ---
     case 'past_analysis':
         specificPrompt = `
         موضوع: **گزرے ہوئے حالات کا تجزیہ (Past Analysis)**
@@ -196,8 +189,6 @@ export const getNumerologyAnalysis = async (data: any, topic: string = 'general'
         4. آنے والا "لکی سال" کون سا ہے؟
         `;
         break;
-
-    // --- Additional Features ---
     case 'lucky_stone':
         specificPrompt = `
         موضوع: **آپ کا لکی پتھر (Lucky Gemstone)**
@@ -238,8 +229,6 @@ export const getNumerologyAnalysis = async (data: any, topic: string = 'general'
         3. بلاؤں کو ٹالنے کا خاص طریقہ۔
         `;
         break;
-    
-    // --- Mobile Analysis ---
     case 'mobile_analysis':
         specificPrompt = `
         موضوع: **موبائل نمبر کا تجزیہ (Mobile Number Analysis)**
@@ -252,8 +241,6 @@ export const getNumerologyAnalysis = async (data: any, topic: string = 'general'
         4. **مشورہ:** اگر نمبر ناموافق ہے تو کیا صدقہ دیں یا نمبر بدل لیں؟
         `;
         break;
-
-    // --- Default General ---
     default:
         specificPrompt = `
         موضوع: **اعداد کا مفصل تجزیہ (General Analysis)**
@@ -276,7 +263,6 @@ export const getNumerologyAnalysis = async (data: any, topic: string = 'general'
   return generateSpiritualResponse(prompt);
 };
 
-// --- New Function for Advanced Horoscope Features ---
 export const getHoroscopeAnalysis = async (data: any, type: 'chart' | 'match' | 'istikhara' | 'modern', extraData?: any): Promise<string> => {
     const val = (v: string) => v && v.trim() !== '' ? v : null;
     
@@ -377,7 +363,6 @@ export const getHoroscopeAnalysis = async (data: any, type: 'chart' | 'match' | 
     return generateSpiritualResponse(prompt);
 };
 
-// --- New Function for Black Magic Detection & Protection ---
 export const getBlackMagicDiagnosis = async (data: any, type: 'diagnosis' | 'history' | 'protection', query?: string): Promise<string> => {
     const val = (v: string) => v && v.trim() !== '' ? v : null;
 
