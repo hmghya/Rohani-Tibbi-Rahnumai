@@ -5,20 +5,26 @@ const getAiClient = () => {
   let apiKey: string | undefined;
   
   try {
-    // Robust check for process.env to avoid ReferenceError in browsers
+    // Attempt 1: Safe access via process.env if available (Node/Polyfilled environments)
     // @ts-ignore
-    if (typeof process !== 'undefined' && process.env) {
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
        // @ts-ignore
        apiKey = process.env.API_KEY;
-    } else {
-       // Fallback: If bundler replaced the string literal 'process.env.API_KEY' but removed 'process'
-       try {
-         // @ts-ignore
-         apiKey = process.env.API_KEY;
-       } catch (e) {}
+    }
+    
+    // Attempt 2: Direct access fallback. 
+    // This is crucial for bundlers (Vite/Webpack) that replace the string 'process.env.API_KEY' 
+    // with the actual value during build, even if the 'process' object itself doesn't exist.
+    if (!apiKey) {
+        try {
+            // @ts-ignore
+            apiKey = process.env.API_KEY;
+        } catch (e) {
+            // ReferenceError is expected here if process is undefined and bundler didn't replace the string
+        }
     }
   } catch (e) {
-    console.debug("Could not read process.env.API_KEY directly", e);
+    console.debug("API Key access error", e);
   }
 
   // Final check
@@ -53,12 +59,25 @@ const getFriendlyErrorMessage = (error: any): string => {
     
     // 1. Missing Key (Build Issue)
     if (msg.includes('missing_api_key_env') || msg.includes('api key is required')) {
-        return "سرور پر API Key موجود نہیں ہے۔ یہ بلڈ (Build) کنفیگریشن کا مسئلہ ہے۔ براہ کرم یقینی بنائیں کہ API_KEY سیٹ ہے۔";
+        return `### ⚠️ کنفیگریشن ایرر (Missing API Key)
+
+**مسئلہ:** ایپ کو چلانے کے لیے **API Key** نہیں ملی۔
+
+**حل:**
+اگر آپ نے اس ایپ کو Deploy کیا ہے، تو براہ کرم اپنی ہوسٹنگ سروس (جیسے Vercel, Netlify) کی **Environment Variables** سیٹنگز میں جائیں اور وہاں:
+- **Key:** \`API_KEY\`
+- **Value:** (آپ کی Google Gemini API Key)
+درج کریں اور دوبارہ ڈیپلائے کریں۔`;
     }
 
     // 2. Domain Blocked or Bad Key (Cloud Console Issue)
     if (msg.includes('api key') || msg.includes('unauthorized') || msg.includes('403') || msg.includes('permission denied') || msg.includes('referrer')) {
-        return "اس ویب سائٹ ڈومین کو API استعمال کرنے کی اجازت نہیں ہے۔ (Domain Restriction / 403)۔ براہ کرم Google Cloud Console میں ڈومین کو Allow کریں۔";
+        return `### 🚫 رسائی کی اجازت نہیں (Domain Error)
+        
+**مسئلہ:** اس ویب سائٹ ڈومین کو API استعمال کرنے کی اجازت نہیں ہے (403 Forbidden)۔
+
+**حل:**
+Google Cloud Console میں جائیں، اپنی API Key کی سیٹنگز کھولیں، اور **Website Restrictions** میں اس ویب سائٹ کا لنک (URL) شامل کریں۔`;
     }
 
     // 3. Quota Exceeded
