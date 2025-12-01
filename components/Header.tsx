@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AppSection } from '../types';
 import { Menu, X, Home, Clock, Calculator, Stethoscope, Watch, Star, Moon, Shield, FileText, Phone, BookOpen, CalendarDays } from 'lucide-react';
@@ -78,7 +77,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
                     <AppLogo />
                 </div>
                 <h1 className="text-xl md:text-2xl font-bold leading-none whitespace-nowrap tracking-wide text-white drop-shadow-md">
-                    روحانی و طبی رہنمائی
+                    طبی و روحانی معالج
                 </h1>
             </div>
 

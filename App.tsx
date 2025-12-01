@@ -36,7 +36,7 @@ const WelcomeScreen = ({ onEnter }: { onEnter: () => void }) => {
 
         {/* Title & Tagline */}
         <h1 className="text-3xl md:text-4xl font-bold mb-2 tracking-wide drop-shadow-lg text-transparent bg-clip-text bg-gradient-to-b from-white to-emerald-100">
-          روحانی و طبی رہنمائی
+          طبی و روحانی معالج
         </h1>
         <div className="h-1 w-24 bg-yellow-400/50 rounded-full mb-4"></div>
         
