@@ -1,13 +1,24 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 // Initialize Gemini API
-// Ideally, this comes from process.env.API_KEY, but for this environment we assume it's injected.
 const getAiClient = () => {
-  const apiKey = process.env.API_KEY;
+  let apiKey: string | undefined;
+  
+  try {
+    // Safe access to process.env for environments where process might not be defined
+    if (typeof process !== 'undefined' && process.env) {
+      apiKey = process.env.API_KEY;
+    }
+  } catch (e) {
+    console.error("Error accessing environment variables:", e);
+  }
+
   if (!apiKey) {
-    console.error("API Key is missing");
+    // Fallback: Check if it's injected globally or via import.meta (if supported in future)
+    console.error("API Key is missing. Please ensure the API_KEY environment variable is set in your build or hosting configuration.");
     throw new Error("API Key is required");
   }
+
   return new GoogleGenAI({ apiKey });
 };
 
@@ -39,9 +50,13 @@ export const generateSpiritualResponse = async (prompt: string): Promise<string>
       }
     });
     return response.text || "معذرت، کوئی جواب موصول نہیں ہوا۔ براہ کرم دوبارہ کوشش کریں۔";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating response:", error);
-    return "سرور میں فنی خرابی ہے۔ براہ کرم کچھ دیر بعد کوشش کریں۔";
+    // Provide a more helpful error message if possible
+    if (error.message?.includes('API Key')) {
+        return "سرور کی کنفیگریشن میں مسئلہ ہے (API Key Missing)۔ براہ کرم ایڈمن سے رابطہ کریں۔";
+    }
+    return "سرور میں فنی خرابی ہے یا انٹرنیٹ کا مسئلہ ہے۔ براہ کرم کچھ دیر بعد کوشش کریں۔";
   }
 };
 
@@ -87,8 +102,11 @@ export const analyzeImageWithText = async (prompt: string, base64Image: string):
       }
     });
     return response.text || "تصویر کا تجزیہ کرنے میں ناکامی ہوئی۔";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error analyzing image:", error);
+    if (error.message?.includes('API Key')) {
+        return "سرور کی کنفیگریشن میں مسئلہ ہے (API Key Missing)۔";
+    }
     return "تصویر پروسیس کرنے میں خرابی پیش آئی۔";
   }
 };

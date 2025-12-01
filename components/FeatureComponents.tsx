@@ -8,17 +8,16 @@ interface SectionProps {
   onBack: () => void;
 }
 
-// --- Helper for Safe Dates (Robust Error Handling) ---
+// --- Helper Functions (Top Level) ---
+
 const safeIntlFormat = (date: Date, locale: string, options: Intl.DateTimeFormatOptions) => {
     try {
         return new Intl.DateTimeFormat(locale, options).format(date);
     } catch (e) {
-        // Fallback: Remove 'calendar' option as it is the most common cause of crashes in older/limited browsers
         const { calendar, ...safeOptions } = options;
         try {
             return new Intl.DateTimeFormat('en-US', safeOptions).format(date);
         } catch (e2) {
-            // Ultimate fallback if even en-US fails
             if (options.day) return date.getDate().toString();
             if (options.year) return date.getFullYear().toString();
             return '';
@@ -30,12 +29,105 @@ const safeIntlMonth = (date: Date, locale: string, options: Intl.DateTimeFormatO
     try {
         return new Intl.DateTimeFormat(locale, options).format(date);
     } catch (e) {
-        // Fallback for month names
         return date.toLocaleString('en-US', { month: 'long' });
     }
 };
 
-// --- Special Days Data ---
+const urduMonths = ['جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون', 'جولائی', 'اگست', 'ستمبر', 'اکتوبر', 'نومبر', 'دسمبر'];
+
+const getHindiMonthUrdu = (date: Date) => {
+    const monthName = safeIntlMonth(date, 'en-u-ca-indian', { month: 'long' });
+    const mappings: Record<string, string> = {
+        'Chaitra': 'چیت', 'Vaisakha': 'بیساکھ', 'Jyeshtha': 'جیٹھ', 'Jyaistha': 'جیٹھ',
+        'Ashadha': 'ہاڑ', 'Asadha': 'ہاڑ', 'Sravana': 'ساون', 'Shravana': 'ساون',
+        'Bhadra': 'بھادوں', 'Bhadrapada': 'بھادوں', 'Ashvina': 'اسوج', 'Asvina': 'اسوج',
+        'Kartika': 'کاتک', 'Agrahayana': 'مگھر', 'Margashirsha': 'مگھر', 'Pausha': 'پوہ',
+        'Pausa': 'پوہ', 'Magha': 'ماگھ', 'Phalguna': 'پھاگن'
+    };
+    for (const key in mappings) if (monthName.includes(key)) return mappings[key];
+    return monthName || 'ماہ';
+};
+
+const getGregorianMonthUrdu = (date: Date) => {
+    const monthIndex = date.getMonth();
+    return urduMonths[monthIndex];
+};
+
+const getHijriMonthUrdu = (date: Date) => {
+    const hijriMonth = safeIntlMonth(date, 'en-u-ca-islamic-umalqura', { month: 'long' });
+    const mappings: Record<string, string> = {
+        'Muharram': 'محرم', 'Safar': 'صفر', 'Rabiʻ I': 'ربیع الاول', 'Rabiʻ II': 'ربیع الثانی',
+        'Jumada I': 'جمادی الثانی', 'Jumada II': 'جمادی الثانی',
+        'Rajab': 'رجب', 'Shaʻban': 'شعبان',
+        'Ramadan': 'رمضان', 'Shawwal': 'شوال', 'Dhu al-Qiʻdah': 'ذیقعد', 'Dhu al-Hijjah': 'ذی الحجہ'
+    };
+    for (const key in mappings) if (hijriMonth.includes(key)) return mappings[key];
+    return hijriMonth || 'ماہ';
+};
+
+const getBikramiYear = (date: Date) => date.getFullYear() + 57;
+
+const getNanakShahiYear = (date: Date) => {
+    const month = date.getMonth();
+    const day = date.getDate();
+    if (month > 2 || (month === 2 && day >= 14)) {
+        return date.getFullYear() - 1468;
+    }
+    return date.getFullYear() - 1469;
+};
+
+// --- Prayer Time Helpers ---
+
+const adjustTimeStr = (timeStr: string, offsetMinutes: number) => {
+    if (!timeStr) return timeStr;
+    if (offsetMinutes === 0) return timeStr;
+    try {
+        const [time, period] = timeStr.trim().split(/\s+/);
+        let [hours, minutes] = time.split(':').map(Number);
+        
+        const isPM = period && period.toUpperCase() === 'PM';
+        const isAM = period && period.toUpperCase() === 'AM';
+
+        if (isPM && hours !== 12) hours += 12;
+        if (isAM && hours === 12) hours = 0;
+        
+        const date = new Date();
+        date.setHours(hours, minutes + offsetMinutes);
+        
+        let newHours = date.getHours();
+        const newMinutes = date.getMinutes();
+        const newPeriod = newHours >= 12 ? 'PM' : 'AM';
+        
+        if (newHours > 12) newHours -= 12;
+        if (newHours === 0) newHours = 12;
+        
+        return `${newHours}:${newMinutes.toString().padStart(2, '0')} ${newPeriod}`;
+    } catch (e) {
+        return timeStr;
+    }
+};
+
+const parseTimeToMinutes = (timeStr: string) => {
+    if (!timeStr) return 0;
+    try {
+        const cleanStr = timeStr.replace(/[\u0600-\u06FF]/g, '').trim(); 
+        const [time, period] = cleanStr.split(' ');
+        if (!time || !period) return 0;
+        let [hours, minutes] = time.split(':').map(Number);
+        if (isNaN(hours) || isNaN(minutes)) return 0;
+        
+        const isPM = period.toUpperCase() === 'PM';
+        const isAM = period.toUpperCase() === 'AM';
+        
+        if (isPM && hours !== 12) hours += 12;
+        if (isAM && hours === 12) hours = 0;
+        
+        return hours * 60 + minutes;
+    } catch (e) {
+        return 0;
+    }
+};
+
 const SPECIAL_DAYS_DATA = [
     { d: 1, m: 1, label: 'نئے سال کا آغاز (New Year)' },
     { d: 4, m: 1, label: 'بریل کا عالمی دن' },
@@ -73,7 +165,8 @@ const SPECIAL_DAYS_DATA = [
     { d: 25, m: 12, label: 'یوم قائد اعظم / کرسمس' },
 ];
 
-// --- Improved Back Button ---
+// --- Shared Components (Top Level) ---
+
 const BackButton = ({ onClick }: { onClick: () => void }) => (
   <div className="flex justify-start mb-3">
     <button
@@ -88,7 +181,6 @@ const BackButton = ({ onClick }: { onClick: () => void }) => (
   </div>
 );
 
-// --- Improved File Uploader ---
 const FileUploader = ({ onSelect, label }: { onSelect: (b64: string) => void, label: string }) => {
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,7 +205,6 @@ const FileUploader = ({ onSelect, label }: { onSelect: (b64: string) => void, la
   );
 };
 
-// --- Voice Input Component ---
 interface VoiceInputProps {
   value: string;
   onChange: (val: string) => void;
@@ -195,13 +286,190 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ value, onChange, placeholder, m
     );
 };
 
+// --- Calendar Components (Top Level) ---
+
+const TodayPanel = () => {
+    const today = new Date();
+    const gDay = today.getDate();
+    const gMonth = urduMonths[today.getMonth()];
+    const gYear = today.getFullYear();
+    
+    const hDay = safeIntlFormat(today, 'ur-PK', { calendar: 'islamic-umalqura', day: 'numeric' });
+    const hMonth = getHijriMonthUrdu(today);
+    const hYear = safeIntlFormat(today, 'en-u-ca-islamic-umalqura', { year: 'numeric' });
+
+    const pDay = safeIntlFormat(today, 'hi-IN-u-ca-indian', { calendar: 'indian', day: 'numeric' });
+    const pMonth = getHindiMonthUrdu(today);
+    const bYear = getBikramiYear(today);
+    const nYear = getNanakShahiYear(today);
+
+    return (
+        <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl p-6 border border-gray-200 shadow-md mb-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-100 rounded-full blur-2xl opacity-50 -translate-y-4 translate-x-4"></div>
+            <h3 className="text-center font-bold text-gray-400 text-xs mb-4 uppercase tracking-widest border-b border-gray-100 pb-2">آج کی تاریخ (Today's Date)</h3>
+            <div className="space-y-4 text-center sm:text-right">
+                    <div>
+                        <span className="text-lg text-gray-800 font-medium leading-loose">
+                        آج انگریزی ماہ <span className="font-bold text-blue-700">{gMonth}</span> کی <span className="font-bold text-blue-700">{gDay}</span> تاریخ اور سال <span className="font-bold text-blue-700">{gYear}</span> عیسوی ہے۔
+                        </span>
+                    </div>
+                    <div className="w-full h-px bg-gray-100"></div>
+                    <div>
+                        <span className="text-lg text-gray-800 font-medium leading-loose">
+                            آج اسلامی ماہ <span className="font-bold text-emerald-700">{hMonth}</span> کی <span className="font-bold text-emerald-700">{hDay}</span> تاریخ اور سال <span className="font-bold text-emerald-700">{hYear}</span> ہجری ہے۔
+                        </span>
+                    </div>
+                    <div className="w-full h-px bg-gray-100"></div>
+                    <div>
+                        <span className="text-lg text-gray-800 font-medium leading-loose">
+                            پنجابی (دیسی) ماہ <span className="font-bold text-orange-700">{pMonth}</span> کی <span className="font-bold text-orange-700">{pDay}</span> تاریخ، سال <span className="font-bold text-orange-700">{bYear}</span> بکرمی سمت (<span className="font-bold text-orange-700">{nYear}</span> نانک شاہی) ہے۔
+                        </span>
+                    </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Prayer Card Component (Top Level) ---
+
+const PrayerCard = ({ 
+    title, 
+    time, 
+    icon: Icon, 
+    color, 
+    isActive, 
+    isForbidden = false, 
+    prayerKey,
+    customOffset = 0,
+    isAlarm = false,
+    onOffsetChange,
+    onAlarmToggle
+}: any) => {
+    const [showAdjust, setShowAdjust] = useState(false);
+    const [manualInput, setManualInput] = useState("");
+    
+    // Calculate the display time based on offset
+    const displayTime = adjustTimeStr(time, customOffset);
+
+    // Keep manual input in sync with display time when we open edit mode
+    useEffect(() => {
+            if (showAdjust) setManualInput(displayTime);
+    }, [showAdjust, displayTime]);
+
+    const handleManualBlur = () => {
+        const newMins = parseTimeToMinutes(manualInput);
+        const baseMins = parseTimeToMinutes(time);
+        
+        if (newMins > 0 && baseMins > 0) {
+            let diff = newMins - baseMins;
+            if (diff < -720) diff += 1440;
+            if (diff > 720) diff -= 1440;
+            
+            onOffsetChange(prayerKey, diff - customOffset);
+        } else {
+            setManualInput(displayTime);
+        }
+    };
+
+    const resetOffset = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onOffsetChange(prayerKey, -customOffset);
+    };
+
+    return (
+        <div className={`relative overflow-visible rounded-2xl p-4 flex flex-col items-center justify-center gap-2 border transition-all duration-300 ${isActive ? `bg-gradient-to-br ${color} text-white shadow-lg scale-105 ring-2 ring-offset-2 ring-emerald-100` : 'bg-white border-gray-100 text-gray-700 hover:shadow-md'}`}>
+                {isActive && <div className="absolute inset-0 bg-white/20 animate-pulse pointer-events-none rounded-2xl"></div>}
+                
+                {/* Alarm Button */}
+                <div className="absolute top-2 left-2 z-20">
+                    <button 
+                    onClick={(e) => { e.stopPropagation(); onAlarmToggle(prayerKey); }}
+                    className={`p-1.5 rounded-full transition-colors backdrop-blur-sm ${isActive ? 'bg-white/20 hover:bg-white/30 text-white' : (isAlarm ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400')}`}
+                    title="Alarm"
+                    >
+                        {isAlarm ? <Bell size={14} className="fill-current" /> : <BellOff size={14} />}
+                    </button>
+                </div>
+
+                {/* Settings Button */}
+                {!isForbidden && (
+                    <div className="absolute top-2 right-2 z-20">
+                        <button 
+                        onClick={(e) => { e.stopPropagation(); setShowAdjust(!showAdjust); }}
+                        className={`p-1.5 rounded-full transition-colors backdrop-blur-sm ${isActive ? 'bg-white/20 hover:bg-white/30 text-white' : (showAdjust ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400')}`}
+                        title="Adjust Time"
+                        >
+                            <Settings size={14} />
+                        </button>
+                    </div>
+                )}
+
+                {/* Main Content */}
+                <div className={`p-2 rounded-full ${isActive ? 'bg-white/20' : 'bg-gray-50'}`}>
+                <Icon size={20} className={isActive ? 'text-white' : 'text-gray-500'} />
+                </div>
+                <span className="text-sm font-bold opacity-90">{title}</span>
+                
+                {/* Time Display or Adjustment Controls */}
+                {showAdjust ? (
+                    <div className="flex items-center justify-between bg-white shadow-xl p-2 rounded-xl absolute bottom-[-16px] left-1/2 transform -translate-x-1/2 z-30 w-[160px] border border-gray-200" dir="ltr" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                        onClick={() => onOffsetChange(prayerKey, -1)} 
+                        className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-lg hover:bg-red-100 active:scale-95 transition-all shadow-sm"
+                        >
+                        <Minus size={18} strokeWidth={2.5} />
+                        </button>
+                        
+                        <input 
+                        type="text" 
+                        value={manualInput}
+                        onChange={(e) => setManualInput(e.target.value)}
+                        onBlur={handleManualBlur}
+                        onKeyDown={(e) => {
+                            if(e.key === 'Enter') {
+                                handleManualBlur();
+                                e.currentTarget.blur();
+                            }
+                        }}
+                        className="flex-1 w-full text-center text-sm font-bold text-gray-800 focus:ring-2 focus:ring-emerald-500 outline-none bg-gray-50 rounded mx-1 py-1"
+                        />
+                        
+                        <button 
+                        onClick={() => onOffsetChange(prayerKey, 1)} 
+                        className="w-8 h-8 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 active:scale-95 transition-all shadow-sm"
+                        >
+                        <Plus size={18} strokeWidth={2.5} />
+                        </button>
+                        
+                        {customOffset !== 0 && (
+                            <button 
+                            onClick={resetOffset}
+                            className="absolute -top-3 -right-3 bg-gray-700 text-white rounded-full p-1.5 shadow-md hover:bg-gray-900 border-2 border-white"
+                            title="Reset Time"
+                            >
+                                <RotateCcw size={12} />
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                <span className="text-xl font-bold tracking-wider mt-1" dir="ltr">{displayTime || '--:--'}</span>
+                )}
+
+                {isForbidden && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold absolute top-2 right-2">مکروہ</span>}
+                
+                {isAlarm && !showAdjust && (
+                <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : 'bg-emerald-500'}`}></div>
+                )}
+        </div>
+    );
+};
+
 // --- Calendar Section ---
 export const CalendarSection = ({ onBack }: SectionProps) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [calendarType, setCalendarType] = useState<'gregorian' | 'hijri' | 'punjabi'>('gregorian');
     const [yearInput, setYearInput] = useState(currentDate.getFullYear().toString());
 
-    // Auto-update date if day changes (keeps calendar live)
     useEffect(() => {
         const timer = setInterval(() => {
             const now = new Date();
@@ -209,7 +477,7 @@ export const CalendarSection = ({ onBack }: SectionProps) => {
                 setCurrentDate(now);
                 setYearInput(now.getFullYear().toString());
             }
-        }, 60000); // Check every minute
+        }, 60000);
         return () => clearInterval(timer);
     }, [currentDate]);
 
@@ -221,8 +489,6 @@ export const CalendarSection = ({ onBack }: SectionProps) => {
     const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
     const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
     
-    const urduMonths = ['جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون', 'جولائی', 'اگست', 'ستمبر', 'اکتوبر', 'نومبر', 'دسمبر'];
-
     const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const valStr = e.target.value;
         setYearInput(valStr);
@@ -235,53 +501,6 @@ export const CalendarSection = ({ onBack }: SectionProps) => {
     const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const val = parseInt(e.target.value);
         setCurrentDate(new Date(currentDate.getFullYear(), val, 1));
-    };
-
-    const getHindiMonthUrdu = (date: Date) => {
-        const monthName = safeIntlMonth(date, 'en-u-ca-indian', { month: 'long' });
-        const mappings: Record<string, string> = {
-            'Chaitra': 'چیت', 'Vaisakha': 'بیساکھ', 'Jyeshtha': 'جیٹھ', 'Jyaistha': 'جیٹھ',
-            'Ashadha': 'ہاڑ', 'Asadha': 'ہاڑ', 'Sravana': 'ساون', 'Shravana': 'ساون',
-            'Bhadra': 'بھادوں', 'Bhadrapada': 'بھادوں', 'Ashvina': 'اسوج', 'Asvina': 'اسوج',
-            'Kartika': 'کاتک', 'Agrahayana': 'مگھر', 'Margashirsha': 'مگھر', 'Pausha': 'پوہ',
-            'Pausa': 'پوہ', 'Magha': 'ماگھ', 'Phalguna': 'پھاگن'
-        };
-        for (const key in mappings) if (monthName.includes(key)) return mappings[key];
-        return monthName || 'ماہ';
-    };
-
-    const getGregorianMonthUrdu = (date: Date) => {
-        const monthIndex = date.getMonth();
-        return urduMonths[monthIndex];
-    };
-
-    const getHijriMonthUrdu = (date: Date) => {
-        const hijriMonth = safeIntlMonth(date, 'en-u-ca-islamic-umalqura', { month: 'long' });
-        const mappings: Record<string, string> = {
-            'Muharram': 'محرم', 'Safar': 'صفر', 'Rabiʻ I': 'ربیع الاول', 'Rabiʻ II': 'ربیع الثانی',
-            'Jumada I': 'جمادی الثانی', 'Jumada II': 'جمادی الثانی', // User requested override: Jumada I -> Jumada II
-            'Rajab': 'رجب', 'Shaʻban': 'شعبان',
-            'Ramadan': 'رمضان', 'Shawwal': 'شوال', 'Dhu al-Qiʻdah': 'ذیقعد', 'Dhu al-Hijjah': 'ذی الحجہ'
-        };
-        for (const key in mappings) if (hijriMonth.includes(key)) return mappings[key];
-        return hijriMonth || 'ماہ';
-    };
-
-    // Calculate Bikrami Year (Approx Gregorian + 57)
-    const getBikramiYear = (date: Date) => {
-        return date.getFullYear() + 57;
-    };
-
-    // Calculate Nanak Shahi Year (Approx Gregorian - 1468/69)
-    const getNanakShahiYear = (date: Date) => {
-        // Nanakshahi year starts mid-March
-        const month = date.getMonth();
-        const day = date.getDate();
-        // If after ~March 14, it's new year.
-        if (month > 2 || (month === 2 && day >= 14)) {
-            return date.getFullYear() - 1468;
-        }
-        return date.getFullYear() - 1469;
     };
 
     const getHeaderDate = () => {
@@ -326,49 +545,6 @@ export const CalendarSection = ({ onBack }: SectionProps) => {
     const currentMonthEvents = SPECIAL_DAYS_DATA.filter(
         (e) => e.m === currentDate.getMonth() + 1
     ).sort((a, b) => a.d - b.d);
-
-    // Dynamic Today's Date Panel
-    const TodayPanel = () => {
-        const today = new Date();
-        const gDay = today.getDate();
-        const gMonth = urduMonths[today.getMonth()];
-        const gYear = today.getFullYear();
-        
-        const hDay = safeIntlFormat(today, 'ur-PK', { calendar: 'islamic-umalqura', day: 'numeric' });
-        const hMonth = getHijriMonthUrdu(today);
-        const hYear = safeIntlFormat(today, 'en-u-ca-islamic-umalqura', { year: 'numeric' });
-
-        const pDay = safeIntlFormat(today, 'hi-IN-u-ca-indian', { calendar: 'indian', day: 'numeric' });
-        const pMonth = getHindiMonthUrdu(today);
-        const bYear = getBikramiYear(today);
-        const nYear = getNanakShahiYear(today);
-
-        return (
-            <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl p-6 border border-gray-200 shadow-md mb-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-100 rounded-full blur-2xl opacity-50 -translate-y-4 translate-x-4"></div>
-                <h3 className="text-center font-bold text-gray-400 text-xs mb-4 uppercase tracking-widest border-b border-gray-100 pb-2">آج کی تاریخ (Today's Date)</h3>
-                <div className="space-y-4 text-center sm:text-right">
-                     <div>
-                         <span className="text-lg text-gray-800 font-medium leading-loose">
-                            آج انگریزی ماہ <span className="font-bold text-blue-700">{gMonth}</span> کی <span className="font-bold text-blue-700">{gDay}</span> تاریخ اور سال <span className="font-bold text-blue-700">{gYear}</span> عیسوی ہے۔
-                         </span>
-                     </div>
-                     <div className="w-full h-px bg-gray-100"></div>
-                     <div>
-                         <span className="text-lg text-gray-800 font-medium leading-loose">
-                             آج اسلامی ماہ <span className="font-bold text-emerald-700">{hMonth}</span> کی <span className="font-bold text-emerald-700">{hDay}</span> تاریخ اور سال <span className="font-bold text-emerald-700">{hYear}</span> ہجری ہے۔
-                         </span>
-                     </div>
-                     <div className="w-full h-px bg-gray-100"></div>
-                     <div>
-                         <span className="text-lg text-gray-800 font-medium leading-loose">
-                             پنجابی (دیسی) ماہ <span className="font-bold text-orange-700">{pMonth}</span> کی <span className="font-bold text-orange-700">{pDay}</span> تاریخ، سال <span className="font-bold text-orange-700">{bYear}</span> بکرمی سمت (<span className="font-bold text-orange-700">{nYear}</span> نانک شاہی) ہے۔
-                         </span>
-                     </div>
-                </div>
-            </div>
-        );
-    };
 
     return (
         <div className="max-w-5xl mx-auto animate-fade-in">
@@ -514,59 +690,7 @@ export const CalendarSection = ({ onBack }: SectionProps) => {
     );
 };
 
-// --- Helper to manipulate time strings "HH:MM AM" ---
-const adjustTimeStr = (timeStr: string, offsetMinutes: number) => {
-    if (!timeStr) return timeStr;
-    if (offsetMinutes === 0) return timeStr; // Keep original formatting if no offset
-    try {
-        const [time, period] = timeStr.trim().split(/\s+/);
-        let [hours, minutes] = time.split(':').map(Number);
-        
-        const isPM = period && period.toUpperCase() === 'PM';
-        const isAM = period && period.toUpperCase() === 'AM';
-
-        if (isPM && hours !== 12) hours += 12;
-        if (isAM && hours === 12) hours = 0;
-        
-        const date = new Date();
-        date.setHours(hours, minutes + offsetMinutes);
-        
-        let newHours = date.getHours();
-        const newMinutes = date.getMinutes();
-        const newPeriod = newHours >= 12 ? 'PM' : 'AM';
-        
-        // Convert back to 12 hour format
-        if (newHours > 12) newHours -= 12;
-        if (newHours === 0) newHours = 12;
-        
-        return `${newHours}:${newMinutes.toString().padStart(2, '0')} ${newPeriod}`;
-    } catch (e) {
-        return timeStr;
-    }
-};
-
-const parseTimeToMinutes = (timeStr: string) => {
-    if (!timeStr) return 0;
-    try {
-        const cleanStr = timeStr.replace(/[\u0600-\u06FF]/g, '').trim(); 
-        const [time, period] = cleanStr.split(' ');
-        if (!time || !period) return 0;
-        let [hours, minutes] = time.split(':').map(Number);
-        if (isNaN(hours) || isNaN(minutes)) return 0;
-        
-        const isPM = period.toUpperCase() === 'PM';
-        const isAM = period.toUpperCase() === 'AM';
-        
-        if (isPM && hours !== 12) hours += 12;
-        if (isAM && hours === 12) hours = 0;
-        
-        return hours * 60 + minutes;
-    } catch (e) {
-        return 0;
-    }
-};
-
-// --- Prayer Times Section (Redesigned & JSON Powered) ---
+// --- Prayer Times Section ---
 export const PrayerTimesSection = ({ onBack }: SectionProps) => {
     const [city, setCity] = useState('');
     const [locationInput, setLocationInput] = useState('Lahore, Pakistan');
@@ -590,15 +714,12 @@ export const PrayerTimesSection = ({ onBack }: SectionProps) => {
         if (savedAlarms) setActiveAlarms(JSON.parse(savedAlarms));
     }, []);
 
-    // Ensure date stays fresh (for prayer times)
+    // Ensure date stays fresh
     useEffect(() => {
         const timer = setInterval(() => {
             const now = new Date();
             if (now.getDate() !== currentDate.getDate()) {
                 setCurrentDate(now);
-                // Optionally refetch prayer times here if logic requires, 
-                // but since prayerData is usually for "today", we might need to fetch again.
-                // For now, we update the date display.
             }
         }, 60000);
         return () => clearInterval(timer);
@@ -637,7 +758,7 @@ export const PrayerTimesSection = ({ onBack }: SectionProps) => {
         }
     }, []);
 
-    // Refetch if jurist method changes AND we already have data (so we re-calculate)
+    // Refetch if jurist method changes AND we already have data
     useEffect(() => {
         if (prayerData) {
             handleManualSearch();
@@ -652,7 +773,6 @@ export const PrayerTimesSection = ({ onBack }: SectionProps) => {
         let locationStr = cityName || locationInput;
         if (coords) locationStr = `Lat: ${coords.lat}, Long: ${coords.long}`;
 
-        // Prompt designed to return strict JSON
         const prompt = `
         Calculate precise prayer times.
         Location: ${locationStr}
@@ -680,14 +800,12 @@ export const PrayerTimesSection = ({ onBack }: SectionProps) => {
         
         try {
             const res = await generateSpiritualResponse(prompt);
-            // Clean markdown if present
             const cleanJson = res.replace(/```json/g, '').replace(/```/g, '').trim();
             const parsed = JSON.parse(cleanJson);
             setPrayerData(parsed);
             if(parsed.locationName) setCity(parsed.locationName);
         } catch (e) {
             console.error("Failed to parse prayer JSON", e);
-            // Fallback generic error
             setPrayerData({ error: true });
         } finally {
             setLoading(false);
@@ -701,139 +819,6 @@ export const PrayerTimesSection = ({ onBack }: SectionProps) => {
     };
 
     const hijriDate = safeIntlFormat(currentDate, 'ur-PK', { calendar: 'islamic-umalqura', day: 'numeric', month: 'long', year: 'numeric' });
-
-    // --- Sub-Component: Prayer Card ---
-    const PrayerCard = ({ title, time, icon: Icon, color, isActive, isForbidden = false, prayerKey }: any) => {
-        const [showAdjust, setShowAdjust] = useState(false);
-        const [manualInput, setManualInput] = useState("");
-        
-        const offset = customOffsets[prayerKey] || 0;
-        const isAlarm = activeAlarms[prayerKey] || false;
-        
-        // Calculate the display time based on offset
-        const displayTime = adjustTimeStr(time, offset);
-
-        // Keep manual input in sync with display time when we open edit mode
-        useEffect(() => {
-             if (showAdjust) setManualInput(displayTime);
-        }, [showAdjust, displayTime]);
-
-        const handleManualBlur = () => {
-            // Logic to calculate offset from manual input
-            const newMins = parseTimeToMinutes(manualInput);
-            const baseMins = parseTimeToMinutes(time);
-            
-            if (newMins > 0 && baseMins > 0) {
-                let diff = newMins - baseMins;
-                if (diff < -720) diff += 1440;
-                if (diff > 720) diff -= 1440;
-                
-                changeOffset(prayerKey, diff - offset);
-            } else {
-                setManualInput(displayTime); // Revert on invalid
-            }
-        };
-
-        const resetOffset = (e: React.MouseEvent) => {
-            e.stopPropagation();
-            changeOffset(prayerKey, -offset);
-        };
-
-        return (
-            <div className={`relative overflow-visible rounded-2xl p-4 flex flex-col items-center justify-center gap-2 border transition-all duration-300 ${isActive ? `bg-gradient-to-br ${color} text-white shadow-lg scale-105 ring-2 ring-offset-2 ring-emerald-100` : 'bg-white border-gray-100 text-gray-700 hover:shadow-md'}`}>
-                 {isActive && <div className="absolute inset-0 bg-white/20 animate-pulse pointer-events-none rounded-2xl"></div>}
-                 
-                 {/* Alarm Button (Top Left) */}
-                 <div className="absolute top-2 left-2 z-20">
-                     <button 
-                        onClick={(e) => { e.stopPropagation(); toggleAlarm(prayerKey); }}
-                        className={`p-1.5 rounded-full transition-colors backdrop-blur-sm ${isActive ? 'bg-white/20 hover:bg-white/30 text-white' : (isAlarm ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400')}`}
-                        title="Alarm"
-                     >
-                         {isAlarm ? <Bell size={14} className="fill-current" /> : <BellOff size={14} />}
-                     </button>
-                 </div>
-
-                 {/* Settings Button (Top Right) */}
-                 {!isForbidden && (
-                     <div className="absolute top-2 right-2 z-20">
-                         <button 
-                            onClick={(e) => { e.stopPropagation(); setShowAdjust(!showAdjust); }}
-                            className={`p-1.5 rounded-full transition-colors backdrop-blur-sm ${isActive ? 'bg-white/20 hover:bg-white/30 text-white' : (showAdjust ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400')}`}
-                            title="Adjust Time"
-                         >
-                             <Settings size={14} />
-                         </button>
-                     </div>
-                 )}
-
-                 {/* Main Content */}
-                 <div className={`p-2 rounded-full ${isActive ? 'bg-white/20' : 'bg-gray-50'}`}>
-                    <Icon size={20} className={isActive ? 'text-white' : 'text-gray-500'} />
-                 </div>
-                 <span className="text-sm font-bold opacity-90">{title}</span>
-                 
-                 {/* Time Display or Adjustment Controls */}
-                 {showAdjust ? (
-                     <div className="flex items-center justify-between bg-white shadow-xl p-2 rounded-xl absolute bottom-[-16px] left-1/2 transform -translate-x-1/2 z-30 w-[160px] border border-gray-200" dir="ltr" onClick={(e) => e.stopPropagation()}>
-                         {/* Delete/Minus Button */}
-                         <button 
-                            onClick={() => changeOffset(prayerKey, -1)} 
-                            className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-lg hover:bg-red-100 active:scale-95 transition-all shadow-sm"
-                            title="Decrease"
-                         >
-                            <Minus size={18} strokeWidth={2.5} />
-                         </button>
-                         
-                         {/* Editable Input (Write) */}
-                         <input 
-                            type="text" 
-                            value={manualInput}
-                            onChange={(e) => setManualInput(e.target.value)}
-                            onBlur={handleManualBlur}
-                            onKeyDown={(e) => {
-                                if(e.key === 'Enter') {
-                                    handleManualBlur();
-                                    e.currentTarget.blur();
-                                }
-                            }}
-                            className="flex-1 w-full text-center text-sm font-bold text-gray-800 focus:ring-2 focus:ring-emerald-500 outline-none bg-gray-50 rounded mx-1 py-1"
-                         />
-                         
-                         {/* Add/Plus Button */}
-                         <button 
-                            onClick={() => changeOffset(prayerKey, 1)} 
-                            className="w-8 h-8 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 active:scale-95 transition-all shadow-sm"
-                            title="Increase"
-                         >
-                            <Plus size={18} strokeWidth={2.5} />
-                         </button>
-                         
-                         {/* Reset Button (Only if offset exists) */}
-                         {offset !== 0 && (
-                             <button 
-                                onClick={resetOffset}
-                                className="absolute -top-3 -right-3 bg-gray-700 text-white rounded-full p-1.5 shadow-md hover:bg-gray-900 border-2 border-white"
-                                title="Reset Time"
-                             >
-                                 <RotateCcw size={12} />
-                             </button>
-                         )}
-                     </div>
-                 ) : (
-                    <span className="text-xl font-bold tracking-wider mt-1" dir="ltr">{displayTime || '--:--'}</span>
-                 )}
-
-                 {/* Forbidden Label */}
-                 {isForbidden && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold absolute top-2 right-2">مکروہ</span>}
-                 
-                 {/* Alarm Indicator Dot */}
-                 {isAlarm && !showAdjust && (
-                    <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : 'bg-emerald-500'}`}></div>
-                 )}
-            </div>
-        );
-    };
 
     return (
         <div className="max-w-4xl mx-auto animate-fade-in pb-10">
@@ -901,12 +886,74 @@ export const PrayerTimesSection = ({ onBack }: SectionProps) => {
                 <>
                     {/* Main Prayers Grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
-                        <PrayerCard title="فجر" time={prayerData.fajr} icon={CloudSun} color="from-blue-400 to-blue-600" prayerKey="fajr" />
-                        <PrayerCard title="طلوع آفتاب" time={prayerData.sunrise} icon={Sunrise} color="from-orange-400 to-red-500" isForbidden={true} prayerKey="sunrise" />
-                        <PrayerCard title="ظہر" time={prayerData.dhuhr} icon={Sun} color="from-yellow-400 to-orange-500" prayerKey="dhuhr" />
-                        <PrayerCard title="عصر" time={prayerData.asr} icon={CloudSun} color="from-orange-300 to-orange-600" isActive={true} prayerKey="asr" /> 
-                        <PrayerCard title="مغرب" time={prayerData.maghrib} icon={Sunset} color="from-indigo-400 to-purple-600" prayerKey="maghrib" />
-                        <PrayerCard title="عشاء" time={prayerData.isha} icon={Moon} color="from-slate-600 to-slate-800" prayerKey="isha" />
+                        <PrayerCard 
+                            title="فجر" 
+                            time={prayerData.fajr} 
+                            icon={CloudSun} 
+                            color="from-blue-400 to-blue-600" 
+                            prayerKey="fajr"
+                            customOffset={customOffsets['fajr']}
+                            isAlarm={activeAlarms['fajr']}
+                            onOffsetChange={changeOffset}
+                            onAlarmToggle={toggleAlarm}
+                        />
+                        <PrayerCard 
+                            title="طلوع آفتاب" 
+                            time={prayerData.sunrise} 
+                            icon={Sunrise} 
+                            color="from-orange-400 to-red-500" 
+                            isForbidden={true} 
+                            prayerKey="sunrise" 
+                            customOffset={0}
+                            isAlarm={false}
+                            onOffsetChange={() => {}}
+                            onAlarmToggle={() => {}}
+                        />
+                        <PrayerCard 
+                            title="ظہر" 
+                            time={prayerData.dhuhr} 
+                            icon={Sun} 
+                            color="from-yellow-400 to-orange-500" 
+                            prayerKey="dhuhr" 
+                            customOffset={customOffsets['dhuhr']}
+                            isAlarm={activeAlarms['dhuhr']}
+                            onOffsetChange={changeOffset}
+                            onAlarmToggle={toggleAlarm}
+                        />
+                        <PrayerCard 
+                            title="عصر" 
+                            time={prayerData.asr} 
+                            icon={CloudSun} 
+                            color="from-orange-300 to-orange-600" 
+                            isActive={true} 
+                            prayerKey="asr" 
+                            customOffset={customOffsets['asr']}
+                            isAlarm={activeAlarms['asr']}
+                            onOffsetChange={changeOffset}
+                            onAlarmToggle={toggleAlarm}
+                        /> 
+                        <PrayerCard 
+                            title="مغرب" 
+                            time={prayerData.maghrib} 
+                            icon={Sunset} 
+                            color="from-indigo-400 to-purple-600" 
+                            prayerKey="maghrib" 
+                            customOffset={customOffsets['maghrib']}
+                            isAlarm={activeAlarms['maghrib']}
+                            onOffsetChange={changeOffset}
+                            onAlarmToggle={toggleAlarm}
+                        />
+                        <PrayerCard 
+                            title="عشاء" 
+                            time={prayerData.isha} 
+                            icon={Moon} 
+                            color="from-slate-600 to-slate-800" 
+                            prayerKey="isha" 
+                            customOffset={customOffsets['isha']}
+                            isAlarm={activeAlarms['isha']}
+                            onOffsetChange={changeOffset}
+                            onAlarmToggle={toggleAlarm}
+                        />
                     </div>
 
                     {/* Nawafil Section */}
@@ -1148,22 +1195,61 @@ export const DocumentSection = ({ onBack }: SectionProps) => {
             <div className="bg-white rounded-3xl shadow-lg p-6 border border-gray-200">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-3 bg-gray-100 rounded-xl text-gray-700"><FileText size={24} /></div>
-                    <h2 className="text-2xl font-bold text-gray-800">دستاویز ریڈر (OCR)</h2>
+                    <h2 className="text-xl font-bold">دستاویز ریڈر (Document Reader)</h2>
                 </div>
                 
-                <div className="space-y-6">
-                    <FileUploader onSelect={setImage} label="دستاویز / رپورٹ کی تصویر" />
-                    {image && (
-                        <div className="relative h-40 rounded-xl overflow-hidden border border-gray-200">
-                            <img src={image} alt="Preview" className="w-full h-full object-cover" />
-                        </div>
-                    )}
-                    <button onClick={handleScan} disabled={loading} className="w-full py-4 bg-gray-800 text-white rounded-xl font-bold shadow-lg hover:bg-gray-900 transition-all flex items-center justify-center gap-2">
-                        {loading ? <Loader2 className="animate-spin" /> : <>تجزیہ کریں <SearchCheck size={20} /></>}
+                <div className="space-y-4">
+                    <FileUploader onSelect={setImage} label="رپورٹ یا نسخہ اپلوڈ کریں" />
+                    {image && <img src={image} alt="Preview" className="w-full h-48 object-cover rounded-xl border" />}
+                    
+                    <button onClick={handleScan} disabled={loading} className="w-full py-4 bg-gray-800 text-white rounded-xl font-bold shadow-lg hover:bg-gray-900 transition-all disabled:opacity-70 flex justify-center gap-2">
+                        {loading ? <Loader2 className="animate-spin" /> : <>تجزیہ کریں <Sparkles size={20} /></>}
                     </button>
                 </div>
             </div>
             <GenericResult loading={loading} result={result} title="دستاویز کا خلاصہ" />
+        </div>
+    );
+};
+
+// --- General AI Section (Spiritual) ---
+export const GeneralAISection = ({ onBack, title, icon: Icon, colorClass, promptContext }: any) => {
+    const [query, setQuery] = useState('');
+    const [result, setResult] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleAsk = async () => {
+        if (!query) return;
+        setLoading(true);
+        setResult(null);
+        const prompt = `${promptContext}\n\nصارف کا سوال: ${query}`;
+        const res = await generateSpiritualResponse(prompt);
+        setResult(res);
+        setLoading(false);
+    };
+
+    return (
+        <div className="max-w-2xl mx-auto animate-fade-in">
+            <BackButton onClick={onBack} />
+            <div className={`bg-white rounded-3xl shadow-xl p-6 border-t-4 ${colorClass || 'border-emerald-500'}`}>
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600"><Icon size={24} /></div>
+                    <h2 className="text-xl font-bold">{title}</h2>
+                </div>
+                
+                <div className="space-y-4">
+                    <VoiceInput 
+                        multiline
+                        placeholder="اپنا مسئلہ یا سوال یہاں لکھیں..."
+                        value={query}
+                        onChange={setQuery}
+                    />
+                    <button onClick={handleAsk} disabled={loading} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all disabled:opacity-70 flex justify-center gap-2">
+                        {loading ? <Loader2 className="animate-spin" /> : <>پوچھیں <Send size={20} /></>}
+                    </button>
+                </div>
+            </div>
+            <GenericResult loading={loading} result={result} title={title} />
         </div>
     );
 };
@@ -1174,101 +1260,80 @@ export const HoroscopeSection = ({ onBack }: SectionProps) => {
     const defaultDay = today.toLocaleDateString('ur-PK', { weekday: 'long' });
     const defaultDate = today.toLocaleDateString('ur-PK', { dateStyle: 'long' });
     
-    const [type, setType] = useState<'chart' | 'match' | 'modern'>('chart');
-    const [data, setData] = useState<any>({
-        name: '',
-        motherName: '',
-        dob: '',
+    const [data, setData] = useState({ 
+        name: '', 
+        motherName: '', 
+        dob: '', 
         birthTime: '',
         day: defaultDay,
-        date: defaultDate
+        date: defaultDate,
     });
-    const [result, setResult] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState<string | null>(null);
 
-    const handleSubmit = async () => {
+    const handleAnalyze = async () => {
+        if(!data.name) return alert("نام لکھنا ضروری ہے");
         setLoading(true);
-        const res = await getHoroscopeAnalysis(data, type, data);
+        const res = await getHoroscopeAnalysis(data, 'chart');
         setResult(res);
         setLoading(false);
     };
 
     return (
-        <div className="max-w-3xl mx-auto animate-fade-in">
+        <div className="max-w-2xl mx-auto animate-fade-in">
             <BackButton onClick={onBack} />
-            <div className="bg-white rounded-3xl shadow-xl border border-orange-100 overflow-hidden">
-                <div className="flex bg-orange-50 border-b border-orange-100">
-                    <button onClick={() => setType('chart')} className={`flex-1 p-4 font-bold text-sm ${type === 'chart' ? 'bg-white text-orange-600 border-t-2 border-orange-600' : 'text-gray-500'}`}>زائچہ (Chart)</button>
-                    <button onClick={() => setType('match')} className={`flex-1 p-4 font-bold text-sm ${type === 'match' ? 'bg-white text-orange-600 border-t-2 border-orange-600' : 'text-gray-500'}`}>ستارہ میچ</button>
-                    <button onClick={() => setType('modern')} className={`flex-1 p-4 font-bold text-sm ${type === 'modern' ? 'bg-white text-orange-600 border-t-2 border-orange-600' : 'text-gray-500'}`}>لکی نمبرز</button>
+            <div className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100">
+                <div className="flex items-center gap-3 mb-6 border-b pb-4">
+                    <div className="p-3 bg-orange-100 text-orange-600 rounded-xl"><Star size={24} /></div>
+                    <h2 className="text-2xl font-bold text-gray-800">زائچہ قسمت (Horoscope)</h2>
                 </div>
-
-                <div className="p-6 space-y-4">
-                    <VoiceInput value={data.name || ''} onChange={v => setData({...data, name: v})} placeholder="نام" />
+                
+                <div className="space-y-4">
+                    <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="آپ کا نام" />
+                    <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
                     
-                    {type === 'chart' && (
-                        <>
-                            <VoiceInput value={data.motherName || ''} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <VoiceInput value={data.day} onChange={v => setData({...data, day: v})} placeholder="پیدائش کا دن (مثلاً: پیر)" />
-                                <VoiceInput value={data.date} onChange={v => setData({...data, date: v})} placeholder="موجودہ تاریخ" />
-                            </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <VoiceInput value={data.day} onChange={v => setData({...data, day: v})} placeholder="دن" />
+                        <VoiceInput value={data.date} onChange={v => setData({...data, date: v})} placeholder="تاریخ" />
+                    </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <VoiceInput value={data.dob} onChange={v => setData({...data, dob: v})} placeholder="تاریخ پیدائش" />
-                                <VoiceInput value={data.birthTime} onChange={v => setData({...data, birthTime: v})} placeholder="وقت پیدائش (مثلاً: 10:00 AM)" />
-                            </div>
-                        </>
-                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                         <VoiceInput value={data.dob} onChange={v => setData({...data, dob: v})} placeholder="تاریخ پیدائش" />
+                         <VoiceInput value={data.birthTime} onChange={v => setData({...data, birthTime: v})} placeholder="وقت پیدائش" />
+                    </div>
 
-                    {type === 'match' && (
-                        <>
-                            <VoiceInput value={data.name2 || ''} onChange={v => setData({...data, name2: v})} placeholder="دوسرا نام (شریک حیات/دوست)" />
-                            <select className="w-full p-3 rounded-xl border border-gray-200 text-right" onChange={e => setData({...data, relationType: e.target.value})}>
-                                <option>شادی</option>
-                                <option>کاروبار</option>
-                                <option>دوستی</option>
-                            </select>
-                        </>
-                    )}
-
-                    {type === 'modern' && (
-                         <VoiceInput value={data.vehicle || ''} onChange={v => setData({...data, vehicle: v})} placeholder="موبائل یا گاڑی کا نمبر" />
-                    )}
-
-                    <button onClick={handleSubmit} disabled={loading} className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold shadow-lg hover:bg-orange-700 flex items-center justify-center gap-2">
-                         {loading ? <Loader2 className="animate-spin" /> : <>حساب لگائیں <Star size={20} /></>}
+                    <button onClick={handleAnalyze} disabled={loading} className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-orange-700 transition-all disabled:opacity-70 flex justify-center items-center gap-2">
+                        {loading ? <Loader2 className="animate-spin" /> : <>زائچہ نکالیں <Sparkles size={20} /></>}
                     </button>
                 </div>
             </div>
-            <GenericResult loading={loading} result={result} title="نجومی رپورٹ" />
+            <GenericResult loading={loading} result={result} title="آپ کا زائچہ" />
         </div>
     );
 };
 
 // --- Black Magic Section ---
 export const BlackMagicSection = ({ onBack }: SectionProps) => {
-    // Default values for current day/date
     const today = new Date();
     const defaultDay = today.toLocaleDateString('ur-PK', { weekday: 'long' });
     const defaultDate = today.toLocaleDateString('ur-PK', { dateStyle: 'long' });
 
-    const [name, setName] = useState('');
-    const [motherName, setMotherName] = useState('');
-    const [dob, setDob] = useState('');
-    const [birthTime, setBirthTime] = useState('');
-    const [day, setDay] = useState(defaultDay);
-    const [date, setDate] = useState(defaultDate);
-    
-    const [symptoms, setSymptoms] = useState('');
+    const [data, setData] = useState({ 
+        name: '', 
+        motherName: '', 
+        dob: '', 
+        birthTime: '',
+        day: defaultDay,
+        date: defaultDate,
+        problem: '' 
+    });
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<string | null>(null);
 
-    const handleCheck = async () => {
+    const handleDiagnose = async () => {
+        if(!data.name) return alert("نام لکھنا ضروری ہے");
         setLoading(true);
-        // We pass the manually entered (or default) day and date to the service
-        const res = await getBlackMagicDiagnosis({ name, motherName, dob, birthTime, problem: symptoms, day, date }, 'diagnosis');
+        const res = await getBlackMagicDiagnosis(data, 'diagnosis');
         setResult(res);
         setLoading(false);
     };
@@ -1278,238 +1343,214 @@ export const BlackMagicSection = ({ onBack }: SectionProps) => {
             <BackButton onClick={onBack} />
             <div className="bg-white rounded-3xl shadow-xl p-6 border border-red-100">
                 <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                    <div className="p-3 bg-red-100 text-red-600 rounded-xl"><Shield size={24} /></div>
-                    <h2 className="text-2xl font-bold text-gray-800">تشخیص جادو و اثرات</h2>
+                    <div className="p-3 bg-red-100 text-red-600 rounded-xl"><ShieldCheck size={24} /></div>
+                    <h2 className="text-2xl font-bold text-gray-800">کالا جادو / بندش (Diagnosis)</h2>
                 </div>
+                
                 <div className="space-y-4">
-                    <VoiceInput value={name} onChange={setName} placeholder="متاثرہ شخص کا نام" />
-                    <VoiceInput value={motherName} onChange={setMotherName} placeholder="والدہ کا نام" />
+                    <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="متاثرہ شخص کا نام" />
+                    <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
                     
-                    {/* New Fields: Day, Date, DOB, BirthTime */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <VoiceInput value={day} onChange={setDay} placeholder="آج کا دن (مثلاً: جمعرات)" />
-                        <VoiceInput value={date} onChange={setDate} placeholder="آج کی تاریخ" />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <VoiceInput value={dob} onChange={setDob} placeholder="تاریخ پیدائش" />
-                        <VoiceInput value={birthTime} onChange={setBirthTime} placeholder="وقت پیدائش" />
+                        <VoiceInput value={data.day} onChange={v => setData({...data, day: v})} placeholder="دن" />
+                        <VoiceInput value={data.date} onChange={v => setData({...data, date: v})} placeholder="تاریخ" />
                     </div>
 
-                    <VoiceInput multiline value={symptoms} onChange={setSymptoms} placeholder="علامات (مثلاً: ڈراؤنے خواب، سر بھاری رہنا...)" />
-                    
-                    <button onClick={handleCheck} disabled={loading} className="w-full py-4 bg-red-600 text-white rounded-xl font-bold shadow-lg hover:bg-red-700 flex items-center justify-center gap-2">
-                        {loading ? <Loader2 className="animate-spin" /> : "تشخیص کریں"}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                         <VoiceInput value={data.dob} onChange={v => setData({...data, dob: v})} placeholder="تاریخ پیدائش" />
+                         <VoiceInput value={data.birthTime} onChange={v => setData({...data, birthTime: v})} placeholder="وقت پیدائش" />
+                    </div>
+
+                    <VoiceInput value={data.problem} onChange={v => setData({...data, problem: v})} placeholder="مسئلہ / علامات (اختیاری)" multiline />
+
+                    <button onClick={handleDiagnose} disabled={loading} className="w-full py-4 bg-red-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-red-700 transition-all disabled:opacity-70 flex justify-center items-center gap-2">
+                        {loading ? <Loader2 className="animate-spin" /> : <>تشخیص کریں <Activity size={20} /></>}
                     </button>
                 </div>
             </div>
-            <GenericResult loading={loading} result={result} title="رپورٹ تشخیص" />
+            <GenericResult loading={loading} result={result} title="روحانی تشخیص" />
         </div>
     );
 };
 
 // --- Time Science Section ---
 export const TimeScienceSection = ({ onBack }: SectionProps) => {
-    // Defaults
     const today = new Date();
     const defaultDay = today.toLocaleDateString('ur-PK', { weekday: 'long' });
     const defaultDate = today.toLocaleDateString('ur-PK', { dateStyle: 'long' });
 
-    // State
-    const [data, setData] = useState({
-        name: '',
-        motherName: '',
+    const [data, setData] = useState({ 
+        name: '', 
+        motherName: '', 
+        dob: '', 
+        birthTime: '',
         day: defaultDay,
         date: defaultDate,
-        dob: '',
-        birthTime: ''
+        question: ''
     });
-
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<string | null>(null);
 
     const handleAnalyze = async () => {
         setLoading(true);
-        const now = new Date();
-        
-        // Construct prompt with optional fields
-        let userDetails = "";
-        if (data.name) userDetails += `نام: ${data.name}\n`;
-        if (data.motherName) userDetails += `والدہ کا نام: ${data.motherName}\n`;
-        if (data.dob) userDetails += `تاریخ پیدائش: ${data.dob}\n`;
-        if (data.birthTime) userDetails += `وقت پیدائش: ${data.birthTime}\n`;
-        
+        // We use a custom prompt for Time Science combining user data
         const prompt = `
-        موضوع: علم الساعات (Time Science & Planetary Hours Analysis)
-        
-        موجودہ وقت: ${now.toLocaleTimeString()}
-        موجودہ دن: ${data.day || defaultDay}
-        موجودہ تاریخ: ${data.date || defaultDate}
-        
-        ${userDetails ? "**سائل کی تفصیلات (اختیاری):**" : ""}
-        ${userDetails}
-        
-        براہ کرم "علم الساعات" کے اصولوں کے مطابق تفصیلی تجزیہ کریں:
-        1. **حاکم سیارہ:** اس وقت کون سا سیارہ حاکم ہے؟
-        2. **ساعت کی نوعیت:** کیا یہ وقت سعد (مبارک) ہے یا نحس (منع)؟
-        3. **مشورہ:** ${data.name ? `کیا یہ وقت "${data.name}" کے لیے مناسب ہے؟` : "اس وقت کون سے کام کرنے چاہئیں اور کن سے بچنا چاہیے؟"}
-        4. **وظیفہ:** اس ساعت کے مطابق کوئی مختصر ذکر یا ورد بتائیں۔
-        `;
+        علم الساعات (Time Science) کے اصولوں پر تجزیہ کریں۔
+        نام: ${data.name}
+        والدہ: ${data.motherName}
+        تاریخ پیدائش: ${data.dob}
+        وقت پیدائش: ${data.birthTime}
+        موجودہ دن اور تاریخ: ${data.day}, ${data.date}
+        سوال/مقصد: ${data.question}
 
+        بتائیں کہ یہ وقت ان کے لیے کیسا ہے؟ کیا کام کرنا چاہیے؟
+        `;
         const res = await generateSpiritualResponse(prompt);
         setResult(res);
         setLoading(false);
     };
-    
+
     return (
         <div className="max-w-2xl mx-auto animate-fade-in">
-            <BackButton onClick={onBack} />
-            <div className="bg-white rounded-3xl shadow-lg p-6 border border-purple-100 mb-6">
+             <BackButton onClick={onBack} />
+             <div className="bg-white rounded-3xl shadow-xl p-6 border border-purple-100">
                 <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                     <div className="p-3 bg-purple-100 text-purple-600 rounded-xl"><Clock size={24} /></div>
-                     <h2 className="text-2xl font-bold text-gray-800">علم الساعات (Time Science)</h2>
+                    <div className="p-3 bg-purple-100 text-purple-600 rounded-xl"><Clock size={24} /></div>
+                    <h2 className="text-2xl font-bold text-gray-800">علم الساعات (Time Science)</h2>
                 </div>
 
                 <div className="space-y-4">
-                    <p className="text-sm text-gray-500 mb-2 font-bold text-center bg-gray-50 p-2 rounded-lg border border-gray-100">
-                         ذیل میں دی گئی تفصیلات اختیاری (Optional) ہیں۔ اگر آپ نام وغیرہ نہیں لکھنا چاہتے تو براہ راست "تجزیہ کریں" پر کلک کریں۔
-                    </p>
-
                     <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="نام (اختیاری)" />
                     <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام (اختیاری)" />
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <VoiceInput value={data.day} onChange={v => setData({...data, day: v})} placeholder="دن (مثلاً: پیر)" />
+                        <VoiceInput value={data.day} onChange={v => setData({...data, day: v})} placeholder="دن" />
                         <VoiceInput value={data.date} onChange={v => setData({...data, date: v})} placeholder="تاریخ" />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <VoiceInput value={data.dob} onChange={v => setData({...data, dob: v})} placeholder="تاریخ پیدائش (اختیاری)" />
-                        <VoiceInput value={data.birthTime} onChange={v => setData({...data, birthTime: v})} placeholder="وقت پیدائش (اختیاری)" />
+                         <VoiceInput value={data.dob} onChange={v => setData({...data, dob: v})} placeholder="تاریخ پیدائش" />
+                         <VoiceInput value={data.birthTime} onChange={v => setData({...data, birthTime: v})} placeholder="وقت پیدائش" />
                     </div>
 
-                    <button onClick={handleAnalyze} disabled={loading} className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold shadow-lg hover:bg-purple-700 flex items-center justify-center gap-2">
-                        {loading ? <Loader2 className="animate-spin" /> : <>تجزیہ کریں <Sparkles size={20} /></>}
+                    <VoiceInput value={data.question} onChange={v => setData({...data, question: v})} placeholder="کیا کام کرنا چاہتے ہیں؟ (سوال)" multiline />
+
+                    <button onClick={handleAnalyze} disabled={loading} className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-purple-700 transition-all disabled:opacity-70 flex justify-center items-center gap-2">
+                        {loading ? <Loader2 className="animate-spin" /> : <>ساعت معلوم کریں <Sparkles size={20} /></>}
                     </button>
                 </div>
-            </div>
-            <GenericResult loading={loading} result={result} title="موجودہ ساعت کا حال" />
+             </div>
+             <GenericResult loading={loading} result={result} title="علم الساعات رپورٹ" />
         </div>
     );
 };
 
-// --- Wazaif / Istikhara Section ---
+// --- Wazaif Section ---
 export const WazaifSection = ({ onBack }: SectionProps) => {
-    const [name, setName] = useState('');
-    const [query, setQuery] = useState('');
+    // Similar input structure as others
+    const today = new Date();
+    const defaultDay = today.toLocaleDateString('ur-PK', { weekday: 'long' });
+    const defaultDate = today.toLocaleDateString('ur-PK', { dateStyle: 'long' });
+
+    const [data, setData] = useState({ 
+        name: '', 
+        motherName: '', 
+        dob: '', 
+        birthTime: '',
+        day: defaultDay,
+        date: defaultDate,
+        purpose: ''
+    });
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<string | null>(null);
 
-    const handleIstikhara = async () => {
-        if (!query) return alert("سوال لکھیں");
+    const handleGetWazifa = async () => {
+        if(!data.purpose && !data.name) return alert("براہ کرم نام اور مقصد لکھیں");
         setLoading(true);
-        const res = await getHoroscopeAnalysis({ name }, 'istikhara', { question: query });
-        setResult(res);
-        setLoading(false);
-    };
+        const prompt = `
+        استخارہ اور وظائف سیکشن:
+        نام: ${data.name}
+        والدہ: ${data.motherName}
+        تاریخ پیدائش: ${data.dob}
+        مقصد/پریشانی: ${data.purpose}
 
-    return (
-        <div className="max-w-2xl mx-auto animate-fade-in">
-            <BackButton onClick={onBack} />
-            <div className="bg-white rounded-3xl shadow-xl p-6 border border-teal-100">
-                <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                     <div className="p-3 bg-teal-100 text-teal-600 rounded-xl"><BookOpen size={24} /></div>
-                     <h2 className="text-2xl font-bold text-gray-800">فوری استخارہ و رہنمائی</h2>
-                </div>
-                <div className="space-y-4">
-                    <VoiceInput value={name} onChange={setName} placeholder="آپ کا نام" />
-                    <VoiceInput multiline value={query} onChange={setQuery} placeholder="اپنا سوال یا مسئلہ بیان کریں..." />
-                    <button onClick={handleIstikhara} disabled={loading} className="w-full py-4 bg-teal-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 flex items-center justify-center gap-2">
-                        {loading ? <Loader2 className="animate-spin" /> : "استخارہ کریں"}
-                    </button>
-                </div>
-            </div>
-            <GenericResult loading={loading} result={result} title="جواب استخارہ" />
-        </div>
-    );
-};
-
-// --- General AI Section (Spiritual) ---
-export const GeneralAISection = ({ title, icon: Icon, colorClass, promptContext, onBack }: any) => {
-    const [input, setInput] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<string | null>(null);
-
-    const handleSend = async () => {
-        if (!input) return;
-        setLoading(true);
-        const prompt = `${promptContext}\n\nصارف کا سوال: "${input}"`;
+        براہ کرم قرآن و سنت کی روشنی میں بہترین وظیفہ اور دعا تجویز کریں۔
+        `;
         const res = await generateSpiritualResponse(prompt);
         setResult(res);
         setLoading(false);
     };
 
     return (
-        <div className="max-w-2xl mx-auto animate-fade-in">
+         <div className="max-w-2xl mx-auto animate-fade-in">
             <BackButton onClick={onBack} />
-            <div className={`bg-white rounded-3xl shadow-xl p-6 border ${colorClass}`}>
+            <div className="bg-white rounded-3xl shadow-xl p-6 border border-teal-100">
                 <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                    <div className="p-3 bg-gray-100 rounded-xl"><Icon size={24} /></div>
-                    <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
+                    <div className="p-3 bg-teal-100 text-teal-600 rounded-xl"><BookOpen size={24} /></div>
+                    <h2 className="text-2xl font-bold text-gray-800">استخارہ و وظائف</h2>
                 </div>
+
                 <div className="space-y-4">
-                    <VoiceInput 
-                        multiline
-                        placeholder="اپنا مسئلہ تفصیل سے لکھیں..."
-                        value={input}
-                        onChange={setInput}
-                    />
-                    <button onClick={handleSend} disabled={loading} className="w-full py-4 bg-cyan-700 text-white rounded-xl font-bold shadow-lg hover:bg-cyan-800 flex items-center justify-center gap-2">
-                        {loading ? <Loader2 className="animate-spin" /> : <>رہنمائی حاصل کریں <Send size={20} /></>}
+                    <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="آپ کا نام" />
+                    <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <VoiceInput value={data.day} onChange={v => setData({...data, day: v})} placeholder="دن" />
+                        <VoiceInput value={data.date} onChange={v => setData({...data, date: v})} placeholder="تاریخ" />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                         <VoiceInput value={data.dob} onChange={v => setData({...data, dob: v})} placeholder="تاریخ پیدائش" />
+                         <VoiceInput value={data.birthTime} onChange={v => setData({...data, birthTime: v})} placeholder="وقت پیدائش" />
+                    </div>
+
+                    <VoiceInput value={data.purpose} onChange={v => setData({...data, purpose: v})} placeholder="کس مقصد کے لیے وظیفہ چاہیے؟" multiline />
+
+                    <button onClick={handleGetWazifa} disabled={loading} className="w-full py-4 bg-teal-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-teal-700 transition-all disabled:opacity-70 flex justify-center items-center gap-2">
+                        {loading ? <Loader2 className="animate-spin" /> : <>وظیفہ حاصل کریں <BookOpen size={20} /></>}
                     </button>
                 </div>
             </div>
-            <GenericResult loading={loading} result={result} title="روحانی حل" />
-        </div>
+            <GenericResult loading={loading} result={result} title="آپ کا وظیفہ" />
+         </div>
     );
 };
+
 
 // --- Contact Section ---
 export const ContactSection = ({ onBack }: SectionProps) => {
     return (
         <div className="max-w-2xl mx-auto animate-fade-in">
             <BackButton onClick={onBack} />
-            <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-                <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-8 text-white text-center">
-                    <Phone className="w-16 h-16 mx-auto mb-4 opacity-90" />
-                    <h2 className="text-3xl font-bold mb-2">رابطہ کریں</h2>
-                    <p className="opacity-90">ماہرین سے براہ راست گفتگو کے لیے</p>
+            <div className="bg-white rounded-3xl shadow-xl p-8 border border-yellow-100 text-center">
+                <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6 text-yellow-700">
+                    <Phone size={40} />
                 </div>
-                <div className="p-8 space-y-6">
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
-                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600">
-                            <Smartphone size={24} />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-gray-800">حکیم غلام یاسین آرائیں</h3>
-                            <p className="text-sm text-gray-500">کہروڑ پکا، پاکستان</p>
-                            <a href="tel:+923009459059" className="text-green-600 font-bold mt-1 block hover:underline" dir="ltr">+92 300 1234567</a>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
-                            <Shield size={24} />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-gray-800">حاجی اشفاق احمد</h3>
-                            <p className="text-sm text-gray-500">خانیوال، پاکستان</p>
-                            <a href="tel:+923000000000" className="text-blue-600 font-bold mt-1 block hover:underline" dir="ltr">+92 300 7654321</a>
+                <h2 className="text-3xl font-bold text-gray-800 mb-2">رابطہ کریں</h2>
+                <p className="text-gray-500 mb-8">کسی بھی ذاتی رہنمائی یا اپائنٹمنٹ کے لیے نیچے دیے گئے نمبرز پر رابطہ کریں۔</p>
+                
+                <div className="space-y-4">
+                    <div className="p-4 bg-gray-50 rounded-2xl flex items-center gap-4 hover:bg-emerald-50 transition-colors border border-gray-100">
+                        <div className="bg-green-500 text-white p-3 rounded-full"><Phone size={20} /></div>
+                        <div className="text-right">
+                            <p className="font-bold text-gray-800 text-lg">حکیم غلام یاسین آرائیں</p>
+                            <p className="text-emerald-600 font-bold" dir="ltr">+92 300 1234567</p>
+                            <p className="text-xs text-gray-400">کہروڑ پکا</p>
                         </div>
                     </div>
 
-                    <div className="mt-6 text-center text-sm text-gray-400">
-                        <p>Apps Talk SMC Pvt Ltd</p>
+                    <div className="p-4 bg-gray-50 rounded-2xl flex items-center gap-4 hover:bg-emerald-50 transition-colors border border-gray-100">
+                        <div className="bg-blue-500 text-white p-3 rounded-full"><Phone size={20} /></div>
+                        <div className="text-right">
+                            <p className="font-bold text-gray-800 text-lg">حاجی اشفاق احمد</p>
+                            <p className="text-blue-600 font-bold" dir="ltr">+92 300 7654321</p>
+                            <p className="text-xs text-gray-400">خانیوال (ماہر عملیات)</p>
+                        </div>
                     </div>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-gray-100">
+                    <p className="text-xs text-gray-400">Apps Talk SMC Pvt Ltd © 2024</p>
                 </div>
             </div>
         </div>
