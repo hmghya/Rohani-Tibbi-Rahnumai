@@ -1,23 +1,30 @@
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, HarmCategory, HarmBlockThreshold } from "@google/genai";
 
 // Initialize Gemini API
 const getAiClient = () => {
   let apiKey: string | undefined;
   
   try {
-    // Direct access to process.env.API_KEY is preferred for build tools (Vite/Webpack) 
-    // to correctly replace the string with the actual key during build.
-    // The try-catch block prevents a crash if 'process' is not defined in the browser runtime.
+    // Robust check for process.env to avoid ReferenceError in browsers
     // @ts-ignore
-    apiKey = process.env.API_KEY;
+    if (typeof process !== 'undefined' && process.env) {
+       // @ts-ignore
+       apiKey = process.env.API_KEY;
+    } else {
+       // Fallback: If bundler replaced the string literal 'process.env.API_KEY' but removed 'process'
+       try {
+         // @ts-ignore
+         apiKey = process.env.API_KEY;
+       } catch (e) {}
+    }
   } catch (e) {
-    // If process is not defined and replacement didn't happen
     console.debug("Could not read process.env.API_KEY directly", e);
   }
 
-  if (!apiKey) {
-    console.error("API Key is missing. Please ensure the API_KEY environment variable is set.");
-    throw new Error("API Key is required");
+  // Final check
+  if (!apiKey || apiKey.trim() === '') {
+    // Throw a specific code we can catch later to give a better error message
+    throw new Error("MISSING_API_KEY_ENV");
   }
 
   return new GoogleGenAI({ apiKey });
@@ -42,18 +49,43 @@ const SYSTEM_INSTRUCTION = `
 // Helper for error messages
 const getFriendlyErrorMessage = (error: any): string => {
     const msg = error?.message?.toLowerCase() || '';
+    console.error("Original Error:", msg);
     
-    if (msg.includes('api key') || msg.includes('unauthorized') || msg.includes('403') || msg.includes('permission denied')) {
-        return "سرور کی کنفیگریشن میں مسئلہ ہے (API Key/Domain Restriction)۔ براہ کرم ایڈمن سے رابطہ کریں۔";
+    // 1. Missing Key (Build Issue)
+    if (msg.includes('missing_api_key_env') || msg.includes('api key is required')) {
+        return "سرور پر API Key موجود نہیں ہے۔ یہ بلڈ (Build) کنفیگریشن کا مسئلہ ہے۔ براہ کرم یقینی بنائیں کہ API_KEY سیٹ ہے۔";
     }
+
+    // 2. Domain Blocked or Bad Key (Cloud Console Issue)
+    if (msg.includes('api key') || msg.includes('unauthorized') || msg.includes('403') || msg.includes('permission denied') || msg.includes('referrer')) {
+        return "اس ویب سائٹ ڈومین کو API استعمال کرنے کی اجازت نہیں ہے۔ (Domain Restriction / 403)۔ براہ کرم Google Cloud Console میں ڈومین کو Allow کریں۔";
+    }
+
+    // 3. Quota Exceeded
     if (msg.includes('quota') || msg.includes('429')) {
         return "سرور پر لوڈ زیادہ ہے (Quota Exceeded)۔ براہ کرم تھوڑی دیر بعد کوشش کریں۔";
     }
-    if (msg.includes('fetch') || msg.includes('network') || msg.includes('internet')) {
+
+    // 4. Network/Internet
+    if (msg.includes('fetch') || msg.includes('network') || msg.includes('internet') || msg.includes('failed to fetch')) {
         return "انٹرنیٹ کنکشن کا مسئلہ ہے۔ براہ کرم اپنا نیٹ ورک چیک کریں۔";
     }
+
+    // 5. Safety/Content Block
+    if (msg.includes('safety') || msg.includes('harm') || msg.includes('blocked')) {
+        return "معذرت، اس سوال کا جواب مواد کی پالیسی کی وجہ سے نہیں دیا جا سکتا۔ الفاظ تبدیل کر کے کوشش کریں۔";
+    }
+
     return "سرور میں فنی خرابی ہے (Technical Error)۔ براہ کرم کچھ دیر بعد کوشش کریں۔";
 };
+
+// Common Safety Settings to avoid blocking spiritual/medical text unnecessarily
+const SAFETY_SETTINGS = [
+  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+];
 
 export const generateSpiritualResponse = async (prompt: string): Promise<string> => {
   try {
@@ -64,11 +96,11 @@ export const generateSpiritualResponse = async (prompt: string): Promise<string>
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         temperature: 0.7,
+        safetySettings: SAFETY_SETTINGS
       }
     });
     return response.text || "معذرت، کوئی جواب موصول نہیں ہوا۔ براہ کرم دوبارہ کوشش کریں۔";
   } catch (error: any) {
-    console.error("GenAI Error:", error);
     return getFriendlyErrorMessage(error);
   }
 };
@@ -101,11 +133,13 @@ export const analyzeImageWithText = async (prompt: string, base64Image: string):
           { inlineData: { mimeType, data } }
         ]
       },
-      config: { systemInstruction: SYSTEM_INSTRUCTION }
+      config: { 
+          systemInstruction: SYSTEM_INSTRUCTION,
+          safetySettings: SAFETY_SETTINGS
+      }
     });
     return response.text || "تصویر کا تجزیہ کرنے میں ناکامی ہوئی۔";
   } catch (error: any) {
-    console.error("Image Analysis Error:", error);
     return getFriendlyErrorMessage(error);
   }
 };
