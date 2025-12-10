@@ -149,19 +149,23 @@ const getFriendlyErrorMessage = (error: any): string => {
 4. ایپ کو **Redeploy** کریں۔
 
 **حل برائے صارف:**
-ایپ کو ریفریش کریں اور شروع میں اپنی ذاتی Key درج کریں۔`;
+ایپ کو ریفریش کریں اور **Settings (ترتیبات)** میں جا کر اپنی ذاتی Key درج کریں۔`;
     }
 
     // 2. Domain Blocked or Bad Key (Cloud Console Issue)
     if (msg.includes('api key') || msg.includes('unauthorized') || msg.includes('403') || msg.includes('permission denied') || msg.includes('referrer')) {
         return `### 🚫 رسائی کی اجازت نہیں (Domain/Key Error)
         
-**مسئلہ:** فراہم کردہ API Key یا ڈومین کو اجازت نہیں ہے۔ (Error 403)
+**مسئلہ:** فراہم کردہ API Key درست نہیں ہے یا اسے اس ڈومین پر چلنے کی اجازت نہیں ہے۔ (Error 403)
 
-**حل:**
-1. یقینی بنائیں کہ آپ نے درست API Key کاپی کی ہے۔
-2. اگر آپ نے Key پر پابندی (Restriction) لگائی ہے تو اس ویب سائٹ کو اجازت دیں۔
-3. نئی Key بنا کر دوبارہ کوشش کریں۔ (براؤزر کا ڈیٹا کلیئر کریں)`;
+**فوری حل:**
+1. ایپ کے مینو میں **"ترتیبات" (Settings)** پر جائیں۔
+2. پرانی Key کو **Remove** کریں۔
+3. ایک نئی API Key بنا کر درج کریں۔
+
+**دیگر وجوہات:**
+- آپ کی API Key پر "Referrer Restriction" لگی ہو سکتی ہے۔
+- آپ کا Google Cloud Project بلنگ یا پالیسی کی وجہ سے معطل ہو سکتا ہے۔`;
     }
 
     // 3. Quota Exceeded
@@ -194,7 +198,7 @@ export const generateSpiritualResponse = async (prompt: string): Promise<string>
   try {
     const ai = getAiClient();
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-pro-preview', // Upgraded model for better reasoning
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -229,7 +233,7 @@ export const analyzeImageWithText = async (prompt: string, base64Image: string):
     }
 
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-pro-preview', // Upgraded model for medical image analysis
       contents: {
         parts: [
           { text: prompt },
