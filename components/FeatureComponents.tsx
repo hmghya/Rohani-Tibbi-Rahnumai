@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Send, BookOpen, Heart, Moon, Sun, Clock, Eye, ChevronRight, Stethoscope, ArrowRight, MapPin, Sunrise, Sunset, Bell, BellOff, Volume2, X, Gift, Calendar, Zap, Users, Home, Key, Hash, ShieldCheck, Activity, AlertTriangle, Briefcase, PenTool, Car, Ghost, Smile, Star, Phone, UserPlus, HelpCircle, Smartphone, Shield, Save, RefreshCw, Settings, Play, Pause, RotateCcw, Calculator, FileText, Edit2, Check, Fingerprint, Search, History, TrendingUp, Gem, Palette, HeartPulse, CalendarDays, ChevronLeft, Pill, Mic, ThermometerSun, CloudSun, Loader2, Sparkles, MessageSquare, User, Scale, SearchCheck, Globe, Navigation, ChevronDown, Plus, Minus, Trash2 } from 'lucide-react';
-import { getMedicalDiagnosis, getNumerologyAnalysis, scanDocument, generateSpiritualResponse, getInitialDiagnosis, getHoroscopeAnalysis, getBlackMagicDiagnosis, analyzeMedicine } from '../services/geminiService';
+import { getMedicalDiagnosis, getNumerologyAnalysis, scanDocument, generateSpiritualResponse, getInitialDiagnosis, getHoroscopeAnalysis, getBlackMagicDiagnosis, analyzeMedicine, saveApiKey, removeApiKey, validateGeminiApiKey } from '../services/geminiService';
 import GenericResult from './GenericResult';
 
 interface SectionProps {
@@ -282,6 +282,156 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ value, onChange, placeholder, m
                 {isListening ? <Mic size={18} className="animate-ping absolute inline-flex opacity-75" /> : null}
                 <Mic size={18} className="relative z-10" />
             </button>
+        </div>
+    );
+};
+
+// --- Settings Section ---
+export const SettingsSection = ({ onBack }: SectionProps) => {
+    const [key, setKey] = useState('');
+    const [savedKey, setSavedKey] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [status, setStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
+
+    useEffect(() => {
+        const storedKey = localStorage.getItem('user_gemini_api_key');
+        if (storedKey) {
+            setSavedKey(storedKey);
+        }
+    }, []);
+
+    const handleSave = async () => {
+        setStatus('idle');
+        
+        // Basic format validation
+        if (!key.startsWith('AIzaSy') || key.length < 30) {
+            alert("غلط فارمیٹ: API Key عام طور پر 'AIzaSy' سے شروع ہوتی ہے۔");
+            setStatus('invalid');
+            return;
+        }
+
+        setIsLoading(true);
+        const isValid = await validateGeminiApiKey(key);
+        setIsLoading(false);
+
+        if (isValid) {
+            setStatus('valid');
+            // Small delay to show success before saving/reloading
+            setTimeout(() => {
+                saveApiKey(key);
+            }, 1000);
+        } else {
+            setStatus('invalid');
+            alert("یہ API Key کام نہیں کر رہی۔ براہ کرم چیک کریں یا نئی Key بنائیں۔");
+        }
+    };
+
+    const handleRemove = () => {
+        if(confirm("کیا آپ واقعی API Key ختم کرنا چاہتے ہیں؟")) {
+            removeApiKey();
+        }
+    };
+
+    // Mask the key for display: first 4 + asterisks + last 4
+    const getMaskedKey = (k: string) => {
+        if (!k || k.length < 10) return "**********";
+        return `${k.substring(0, 4)}••••••••••••••••••••${k.substring(k.length - 4)}`;
+    };
+
+    return (
+        <div className="max-w-2xl mx-auto animate-fade-in">
+             <BackButton onClick={onBack} />
+             <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-200">
+                <div className="flex items-center gap-3 mb-6 border-b pb-4">
+                    <div className="p-3 bg-gray-100 text-gray-600 rounded-xl"><Settings size={24} /></div>
+                    <h2 className="text-2xl font-bold text-gray-800">ترتیبات (Settings)</h2>
+                </div>
+
+                <div className="space-y-6">
+                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden">
+                        {/* Status Indicator Bar */}
+                        {status === 'valid' && <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500 animate-pulse"></div>}
+                        {status === 'invalid' && <div className="absolute top-0 left-0 w-full h-1 bg-red-500"></div>}
+
+                        <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2 text-lg">
+                            <div className="bg-emerald-100 p-1.5 rounded-lg"><Key size={18} className="text-emerald-600"/></div>
+                            Google Gemini API Key
+                        </h3>
+                        
+                        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                            ایپ کو چلانے کے لیے اپنی ذاتی API Key استعمال کریں۔ یہ آپ کے براؤزر میں محفوظ رہے گی اور کہیں شیئر نہیں ہوگی۔
+                        </p>
+
+                        {savedKey ? (
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-center justify-between bg-emerald-50 p-4 rounded-xl border border-emerald-100 shadow-sm">
+                                    <div className="flex flex-col">
+                                        <span className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-1">Current Key</span>
+                                        <code className="text-emerald-800 font-mono text-sm font-bold tracking-widest">{getMaskedKey(savedKey)}</code>
+                                    </div>
+                                    <span className="bg-emerald-200 text-emerald-800 text-[10px] px-2 py-1 rounded-full font-bold">Active</span>
+                                </div>
+                                <button 
+                                    onClick={handleRemove} 
+                                    className="w-full py-3 text-red-600 text-sm font-bold hover:bg-red-50 rounded-xl border border-red-100 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Trash2 size={16} /> محفوظ شدہ Key ختم کریں
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="relative group">
+                                    <input 
+                                        type="text" 
+                                        value={key}
+                                        onChange={(e) => {
+                                            setKey(e.target.value);
+                                            if (status === 'invalid') setStatus('idle');
+                                        }}
+                                        placeholder="AIzaSy..."
+                                        className={`w-full p-4 pl-12 rounded-xl border-2 focus:ring-4 outline-none text-left font-mono text-sm transition-all ${status === 'invalid' ? 'border-red-300 focus:ring-red-100' : 'border-gray-200 focus:border-emerald-500 focus:ring-emerald-100'}`}
+                                        disabled={isLoading}
+                                    />
+                                    <Key className={`absolute left-4 top-4 transition-colors ${status === 'invalid' ? 'text-red-400' : 'text-gray-400 group-focus-within:text-emerald-500'}`} size={18} />
+                                    {status === 'valid' && <Check className="absolute right-4 top-4 text-emerald-500" size={20} />}
+                                    {status === 'invalid' && <AlertTriangle className="absolute right-4 top-4 text-red-500" size={20} />}
+                                </div>
+
+                                <button 
+                                    onClick={handleSave}
+                                    disabled={isLoading || !key}
+                                    className={`w-full py-3.5 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 text-white ${isLoading ? 'bg-gray-400 cursor-wait' : (status === 'valid' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-gray-800 hover:bg-black')}`}
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <Loader2 size={18} className="animate-spin" /> تصدیق ہو رہی ہے...
+                                        </>
+                                    ) : status === 'valid' ? (
+                                        <>
+                                            <Check size={18} /> تصدیق شدہ! محفوظ ہو رہا ہے
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ShieldCheck size={18} /> محفوظ کریں اور چلائیں
+                                        </>
+                                    )}
+                                </button>
+                                
+                                <p className="text-[10px] text-center text-gray-400">
+                                    "Save" دبانے پر سسٹم خودکار طور پر Key کی تصدیق کرے گا۔
+                                </p>
+                            </div>
+                        )}
+                        
+                        <div className="mt-6 pt-4 border-t border-gray-200 text-center bg-blue-50/50 -mx-6 -mb-6 p-4">
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs font-bold hover:underline inline-flex items-center gap-1 bg-white px-3 py-1.5 rounded-full shadow-sm border border-blue-100 hover:shadow-md transition-all">
+                                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                                نئی Google API Key حاصل کریں <ArrowRight size={12} className="rotate-180" />
+                            </a>
+                        </div>
+                    </div>
+                </div>
+             </div>
         </div>
     );
 };
@@ -862,15 +1012,16 @@ export const PrayerTimesSection = ({ onBack }: SectionProps) => {
 
                  {/* Manual Location Input */}
                  {isEditingLocation && (
-                    <div className="mt-4 pt-4 border-t border-white/10 animate-fade-in flex gap-2">
-                        <input 
-                            type="text" 
-                            value={locationInput}
-                            onChange={(e) => setLocationInput(e.target.value)}
-                            placeholder="شہر کا نام..."
-                            className="flex-1 p-2 rounded-xl text-emerald-900 text-sm outline-none"
-                        />
-                        <button onClick={handleManualSearch} className="bg-yellow-400 text-emerald-900 px-4 py-2 rounded-xl font-bold text-sm hover:bg-yellow-300">
+                    <div className="mt-4 pt-4 border-t border-white/10 animate-fade-in flex gap-2 items-center">
+                        <div className="flex-1">
+                            <VoiceInput 
+                                value={locationInput}
+                                onChange={setLocationInput}
+                                placeholder="شہر کا نام..."
+                                className="text-sm h-10" // Adjust height to match button roughly
+                            />
+                        </div>
+                        <button onClick={handleManualSearch} className="bg-yellow-400 text-emerald-900 px-4 py-2 rounded-xl font-bold text-sm hover:bg-yellow-300 h-12 shadow-sm">
                             تلاش
                         </button>
                     </div>
@@ -991,198 +1142,242 @@ export const PrayerTimesSection = ({ onBack }: SectionProps) => {
     );
 };
 
-// --- Numerology Section ---
-export const NumerologySection = ({ onBack }: SectionProps) => {
-    // Default current day and date in Urdu
-    const today = new Date();
-    const defaultDay = today.toLocaleDateString('ur-PK', { weekday: 'long' });
-    const defaultDate = today.toLocaleDateString('ur-PK', { dateStyle: 'long' });
+// --- Missing Components Implementation ---
 
-    const [data, setData] = useState<any>({ 
-        name: '', 
-        motherName: '', 
-        dob: '', 
-        birthTime: '',
-        day: defaultDay,
-        date: defaultDate,
-        partnerName: '', 
-        mobile: '' 
-    });
-    const [topic, setTopic] = useState('general');
-    const [result, setResult] = useState<string | null>(null);
+export const GeneralAISection = ({ title, icon: Icon, colorClass, promptContext, onBack }: any) => {
+    const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState<string | null>(null);
 
-    const handleAnalyze = async () => {
-        if (!data.name) return alert("براہ کرم نام لکھیں");
+    const handleAsk = async () => {
+        if (!input.trim()) return;
         setLoading(true);
         setResult(null);
-        let extra = '';
-        if (topic === 'relation_spouse') extra = data.partnerName;
-        if (topic === 'mobile_analysis') extra = data.mobile;
-        
-        const res = await getNumerologyAnalysis(data, topic, extra);
-        setResult(res);
-        setLoading(false);
-    };
-
-    const topics = [
-        { id: 'general', label: 'عمومی جائزہ', icon: User },
-        { id: 'relation_spouse', label: 'شریک حیات', icon: Heart },
-        { id: 'business_suitability', label: 'کاروبار', icon: Briefcase },
-        { id: 'lucky_stone', label: 'لکی پتھر', icon: Gem },
-        { id: 'mobile_analysis', label: 'موبائل نمبر', icon: Smartphone },
-        { id: 'future_analysis', label: 'مستقبل', icon: TrendingUp },
-    ];
-
-    return (
-        <div className="max-w-2xl mx-auto animate-fade-in">
-            <BackButton onClick={onBack} />
-            <div className="bg-white rounded-3xl shadow-xl p-6 border border-emerald-100">
-                <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                    <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
-                        <Calculator size={24} />
-                    </div>
-                    <h2 className="text-2xl font-bold text-gray-800">علم الاعداد (Numerology)</h2>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
-                    {topics.map(t => (
-                        <button 
-                            key={t.id}
-                            onClick={() => setTopic(t.id)}
-                            className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${topic === t.id ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-emerald-50'}`}
-                        >
-                            <t.icon size={20} />
-                            <span className="text-xs font-bold">{t.label}</span>
-                        </button>
-                    ))}
-                </div>
-
-                <div className="space-y-4">
-                    <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="آپ کا نام" />
-                    <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <VoiceInput value={data.day} onChange={v => setData({...data, day: v})} placeholder="دن (مثلاً: پیر)" />
-                        <VoiceInput value={data.date} onChange={v => setData({...data, date: v})} placeholder="تاریخ (مثلاً: 12 مارچ 2024)" />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <VoiceInput value={data.dob} onChange={v => setData({...data, dob: v})} placeholder="تاریخ پیدائش" />
-                        <VoiceInput value={data.birthTime} onChange={v => setData({...data, birthTime: v})} placeholder="وقت پیدائش (مثلاً: صبح 10 بجے)" />
-                    </div>
-                    
-                    {topic === 'relation_spouse' && (
-                        <VoiceInput value={data.partnerName} onChange={v => setData({...data, partnerName: v})} placeholder="شریک حیات / پارٹنر کا نام" />
-                    )}
-                    {topic === 'mobile_analysis' && (
-                        <VoiceInput value={data.mobile} onChange={v => setData({...data, mobile: v})} placeholder="موبائل نمبر" type="tel" />
-                    )}
-
-                    <button onClick={handleAnalyze} disabled={loading} className="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-emerald-700 transition-all disabled:opacity-70 flex justify-center items-center gap-2">
-                        {loading ? <Loader2 className="animate-spin" /> : <>تجزیہ کریں <Sparkles size={20} /></>}
-                    </button>
-                </div>
-            </div>
-            <GenericResult loading={loading} result={result} title="رپورٹ علم الاعداد" />
-        </div>
-    );
-};
-
-// --- Medical Section ---
-export const MedicalSection = ({ onBack }: SectionProps) => {
-    const [mode, setMode] = useState<'diagnose' | 'treatment' | 'medicine'>('diagnose');
-    const [symptoms, setSymptoms] = useState('');
-    const [image, setImage] = useState<string | undefined>(undefined);
-    const [treatmentType, setTreatmentType] = useState('طب یونانی (Herbal)');
-    const [result, setResult] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    const handleAction = async () => {
-        setLoading(true);
-        setResult(null);
-        let res = "";
-        if (mode === 'diagnose') {
-            res = await getInitialDiagnosis(symptoms, image);
-        } else if (mode === 'treatment') {
-            res = await getMedicalDiagnosis(symptoms, treatmentType, image);
-        } else if (mode === 'medicine') {
-            if (!image) { alert("تصویر لازمی ہے"); setLoading(false); return; }
-            res = await analyzeMedicine(image);
-        }
+        const fullPrompt = `${promptContext}\n\nصارف کا سوال: ${input}`;
+        const res = await generateSpiritualResponse(fullPrompt);
         setResult(res);
         setLoading(false);
     };
 
     return (
         <div className="max-w-3xl mx-auto animate-fade-in">
-            <BackButton onClick={onBack} />
-            
-            <div className="bg-white rounded-3xl shadow-lg border border-blue-100 overflow-hidden">
-                <div className="flex bg-blue-50 border-b border-blue-100">
-                    <button onClick={() => setMode('diagnose')} className={`flex-1 p-4 text-center font-bold text-sm transition-colors ${mode === 'diagnose' ? 'bg-white text-blue-600 border-t-2 border-blue-600' : 'text-gray-500 hover:bg-blue-100/50'}`}>تشخیص (Diagnosis)</button>
-                    <button onClick={() => setMode('treatment')} className={`flex-1 p-4 text-center font-bold text-sm transition-colors ${mode === 'treatment' ? 'bg-white text-blue-600 border-t-2 border-blue-600' : 'text-gray-500 hover:bg-blue-100/50'}`}>علاج (Treatment)</button>
-                    <button onClick={() => setMode('medicine')} className={`flex-1 p-4 text-center font-bold text-sm transition-colors ${mode === 'medicine' ? 'bg-white text-blue-600 border-t-2 border-blue-600' : 'text-gray-500 hover:bg-blue-100/50'}`}>میڈیسن گائیڈ</button>
+             <BackButton onClick={onBack} />
+             <div className={`bg-white rounded-3xl shadow-xl p-6 border-t-4 ${colorClass}`}>
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-gray-50 rounded-full"><Icon size={24} className="text-gray-700"/></div>
+                    <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
                 </div>
+                
+                <VoiceInput 
+                    value={input}
+                    onChange={setInput}
+                    placeholder="اپنا مسئلہ یا سوال یہاں بیان کریں..."
+                    multiline
+                    className="min-h-[120px] mb-4"
+                />
 
-                <div className="p-6 space-y-6">
-                    {mode !== 'medicine' && (
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">علامات / مسئلہ لکھیں:</label>
-                            <VoiceInput 
-                                multiline
-                                placeholder="مثلاً: سر میں درد ہے، بخار ہے..."
-                                value={symptoms}
-                                onChange={setSymptoms}
-                            />
-                        </div>
-                    )}
+                <button 
+                    onClick={handleAsk}
+                    disabled={loading || !input.trim()}
+                    className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                    {loading ? <Loader2 className="animate-spin"/> : <Send size={18} />}
+                    جواب حاصل کریں
+                </button>
 
-                    {mode === 'treatment' && (
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">طریقہ علاج منتخب کریں:</label>
-                            <select 
-                                className="w-full p-4 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-right bg-white"
-                                value={treatmentType}
-                                onChange={e => setTreatmentType(e.target.value)}
-                            >
-                                <option>طب یونانی (Herbal)</option>
-                                <option>ہومیوپیتھک (Homeopathy)</option>
-                                <option>ایلوپیتھک (Allopathic)</option>
-                                <option>حجامہ تھراپی (Hijama)</option>
-                                <option>آروما تھراپی (Aromatherapy)</option>
-                            </select>
-                        </div>
-                    )}
+                <GenericResult loading={loading} result={result} title={title} />
+             </div>
+        </div>
+    )
+}
 
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">تصویر اپلوڈ کریں (اختیاری):</label>
-                        <FileUploader onSelect={setImage} label={mode === 'medicine' ? "دوائی کی تصویر" : "زبان / چہرہ / رپورٹ کی تصویر"} />
-                        {image && <p className="text-xs text-green-600 mt-2 text-center font-bold">تصویر منتخب ہو گئی ✅</p>}
-                    </div>
+export const ContactSection = ({ onBack }: SectionProps) => {
+    return (
+        <div className="max-w-2xl mx-auto animate-fade-in">
+             <BackButton onClick={onBack} />
+             <div className="bg-white rounded-3xl shadow-xl p-8 border-t-4 border-yellow-500 text-center">
+                 <div className="w-24 h-24 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                     <Phone size={40} className="text-yellow-600" />
+                 </div>
+                 <h2 className="text-2xl font-bold text-gray-800 mb-2">رابطہ برائے رہنمائی</h2>
+                 <p className="text-gray-500 mb-8">کسی بھی قسم کی ذاتی رہنمائی، تشخیص یا علاج کے لیے ماہرین سے رابطہ کریں۔</p>
+                 
+                 <div className="space-y-4 text-right">
+                     <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                         <h3 className="font-bold text-emerald-800 mb-1">حکیم غلام یاسین آرائیں (کہروڑ پکا)</h3>
+                         <p className="text-sm text-gray-600">ماہر امراضِ پیچیدہ و جنسیات، ماہر نبض</p>
+                         <div className="mt-3 flex gap-2">
+                            <a href="tel:+923001234567" className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-emerald-200">کال کریں</a>
+                            <a href="https://wa.me/923001234567" className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-green-200">واٹس ایپ</a>
+                         </div>
+                     </div>
 
-                    <button 
-                        onClick={handleAction}
-                        disabled={loading}
-                        className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-blue-700 transition-all disabled:opacity-70 flex items-center justify-center gap-2"
-                    >
-                        {loading ? <Loader2 className="animate-spin" /> : <>نتیجہ دیکھیں <Stethoscope size={20} /></>}
-                    </button>
+                     <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                         <h3 className="font-bold text-teal-800 mb-1">حاجی اشفاق احمد (خانیوال)</h3>
+                         <p className="text-sm text-gray-600">ماہر عملیات و تعویذات، روحانی علاج</p>
+                         <div className="mt-3 flex gap-2">
+                            <a href="tel:+923007654321" className="bg-teal-100 text-teal-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-teal-200">کال کریں</a>
+                            <a href="https://wa.me/923007654321" className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-green-200">واٹس ایپ</a>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+        </div>
+    )
+}
+
+export const NumerologySection = ({ onBack }: SectionProps) => {
+    const [data, setData] = useState({ name: '', motherName: '', fatherName: '', dob: '', topic: 'general', extra: '' });
+    const [result, setResult] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async () => {
+        if(!data.name) return alert("نام لکھنا ضروری ہے");
+        setLoading(true);
+        const res = await getNumerologyAnalysis(data, data.topic, data.extra);
+        setResult(res);
+        setLoading(false);
+    };
+
+    return (
+        <div className="max-w-3xl mx-auto animate-fade-in">
+             <BackButton onClick={onBack} />
+             <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-emerald-500">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-emerald-50 rounded-full"><Calculator size={24} className="text-emerald-700"/></div>
+                    <h2 className="text-2xl font-bold text-gray-800">علم الاعداد (Numerology)</h2>
                 </div>
-            </div>
-            <GenericResult loading={loading} result={result} title="طبی رپورٹ" />
+                
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                    <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="اپنا نام لکھیں" />
+                    <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
+                    <input type="date" value={data.dob} onChange={e => setData({...data, dob: e.target.value})} className="p-3 border rounded-xl w-full" />
+                    <select className="p-3 border rounded-xl w-full" value={data.topic} onChange={e => setData({...data, topic: e.target.value})}>
+                        <option value="general">عام تجزیہ</option>
+                        <option value="lucky_stone">لکی پتھر</option>
+                        <option value="relation_spouse">شریک حیات سے مناسبت</option>
+                        <option value="business_suitability">کاروبار اور کیریئر</option>
+                    </select>
+                </div>
+                
+                {data.topic === 'relation_spouse' && (
+                     <VoiceInput value={data.extra} onChange={v => setData({...data, extra: v})} placeholder="شریک حیات کا نام" className="mb-4" />
+                )}
+
+                <button onClick={handleSubmit} disabled={loading} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
+                    {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={18} />} تجزیہ کریں
+                </button>
+
+                <GenericResult loading={loading} result={result} title="عددی زائچہ" />
+             </div>
         </div>
     );
 };
 
-// --- Document Reader Section ---
+export const MedicalSection = ({ onBack }: SectionProps) => {
+    const [tab, setTab] = useState<'diagnosis' | 'treatment' | 'medicine'>('diagnosis');
+    const [symptoms, setSymptoms] = useState('');
+    const [image, setImage] = useState('');
+    const [treatmentType, setTreatmentType] = useState('طب یونانی و اسلامی');
+    const [result, setResult] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleDiagnosis = async () => {
+        if(!symptoms) return alert("علامات لکھنا ضروری ہے");
+        setLoading(true);
+        setResult(null);
+        const res = await getInitialDiagnosis(symptoms, image);
+        setResult(res);
+        setLoading(false);
+    }
+
+    const handleTreatment = async () => {
+        if(!symptoms) return alert("علامات لکھنا ضروری ہے");
+        setLoading(true);
+        setResult(null);
+        const res = await getMedicalDiagnosis(symptoms, treatmentType, image);
+        setResult(res);
+        setLoading(false);
+    }
+    
+    const handleMedicine = async () => {
+        if(!image) return alert("تصویر اپلوڈ کریں");
+        setLoading(true);
+        setResult(null);
+        const res = await analyzeMedicine(image);
+        setResult(res);
+        setLoading(false);
+    }
+
+    return (
+        <div className="max-w-3xl mx-auto animate-fade-in">
+             <BackButton onClick={onBack} />
+             <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-blue-500">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-blue-50 rounded-full"><Stethoscope size={24} className="text-blue-700"/></div>
+                    <h2 className="text-2xl font-bold text-gray-800">جدید طبی معالج</h2>
+                </div>
+
+                <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl">
+                    {['diagnosis', 'treatment', 'medicine'].map((t) => (
+                        <button 
+                            key={t}
+                            onClick={() => { setTab(t as any); setResult(null); }}
+                            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${tab === t ? 'bg-white shadow text-blue-800' : 'text-gray-500'}`}
+                        >
+                            {t === 'diagnosis' ? 'تشخیص' : t === 'treatment' ? 'علاج/نسخہ' : 'دوائی کی پہچان'}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="space-y-4">
+                    {tab !== 'medicine' && (
+                        <VoiceInput value={symptoms} onChange={setSymptoms} placeholder="اپنی علامات تفصیل سے بتائیں (مثلاً: سر درد، بخار، بھوک نہ لگنا)..." multiline />
+                    )}
+                    
+                    {(tab === 'diagnosis' || tab === 'medicine') && (
+                        <FileUploader onSelect={setImage} label={tab === 'medicine' ? "دوائی کی تصویر اپلوڈ کریں" : "زبان یا متاثرہ حصے کی تصویر (آپشنل)"} />
+                    )}
+
+                    {image && (
+                        <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden relative">
+                            <img src={image} alt="Preview" className="w-full h-full object-cover" />
+                            <button onClick={() => setImage('')} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"><X size={14}/></button>
+                        </div>
+                    )}
+
+                    {tab === 'treatment' && (
+                        <select className="w-full p-3 border rounded-xl bg-gray-50" value={treatmentType} onChange={e => setTreatmentType(e.target.value)}>
+                            <option>طب یونانی و اسلامی</option>
+                            <option>ایلوپیتھک (Allopathic)</option>
+                            <option>ہومیوپیتھی (Homeopathy)</option>
+                            <option>حجامہ (Hijama)</option>
+                        </select>
+                    )}
+
+                    <button 
+                        onClick={tab === 'diagnosis' ? handleDiagnosis : tab === 'treatment' ? handleTreatment : handleMedicine}
+                        disabled={loading}
+                        className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+                    >
+                        {loading ? <Loader2 className="animate-spin" /> : <Activity size={18} />} 
+                        {tab === 'diagnosis' ? 'بیماری کی تشخیص کریں' : tab === 'treatment' ? 'نسخہ تجویز کریں' : 'معلومات حاصل کریں'}
+                    </button>
+                </div>
+
+                <GenericResult loading={loading} result={result} title={tab === 'diagnosis' ? 'تشخیص' : tab === 'treatment' ? 'تجویز کردہ علاج' : 'دوائی کی معلومات'} />
+             </div>
+        </div>
+    );
+};
+
 export const DocumentSection = ({ onBack }: SectionProps) => {
-    const [image, setImage] = useState<string | null>(null);
+    const [image, setImage] = useState('');
     const [result, setResult] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     const handleScan = async () => {
-        if (!image) return alert("براہ کرم دستاویز کی تصویر اپلوڈ کریں");
+        if(!image) return alert("تصویر اپلوڈ کریں");
         setLoading(true);
         const res = await scanDocument(image);
         setResult(res);
@@ -1190,369 +1385,154 @@ export const DocumentSection = ({ onBack }: SectionProps) => {
     };
 
     return (
-        <div className="max-w-2xl mx-auto animate-fade-in">
-            <BackButton onClick={onBack} />
-            <div className="bg-white rounded-3xl shadow-lg p-6 border border-gray-200">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-gray-100 rounded-xl text-gray-700"><FileText size={24} /></div>
-                    <h2 className="text-xl font-bold">دستاویز ریڈر (Document Reader)</h2>
-                </div>
-                
-                <div className="space-y-4">
-                    <FileUploader onSelect={setImage} label="رپورٹ یا نسخہ اپلوڈ کریں" />
-                    {image && <img src={image} alt="Preview" className="w-full h-48 object-cover rounded-xl border" />}
-                    
-                    <button onClick={handleScan} disabled={loading} className="w-full py-4 bg-gray-800 text-white rounded-xl font-bold shadow-lg hover:bg-gray-900 transition-all disabled:opacity-70 flex justify-center gap-2">
-                        {loading ? <Loader2 className="animate-spin" /> : <>تجزیہ کریں <Sparkles size={20} /></>}
-                    </button>
-                </div>
-            </div>
-            <GenericResult loading={loading} result={result} title="دستاویز کا خلاصہ" />
-        </div>
-    );
-};
-
-// --- General AI Section (Spiritual) ---
-export const GeneralAISection = ({ onBack, title, icon: Icon, colorClass, promptContext }: any) => {
-    const [query, setQuery] = useState('');
-    const [result, setResult] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    const handleAsk = async () => {
-        if (!query) return;
-        setLoading(true);
-        setResult(null);
-        const prompt = `${promptContext}\n\nصارف کا سوال: ${query}`;
-        const res = await generateSpiritualResponse(prompt);
-        setResult(res);
-        setLoading(false);
-    };
-
-    return (
-        <div className="max-w-2xl mx-auto animate-fade-in">
-            <BackButton onClick={onBack} />
-            <div className={`bg-white rounded-3xl shadow-xl p-6 border-t-4 ${colorClass || 'border-emerald-500'}`}>
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600"><Icon size={24} /></div>
-                    <h2 className="text-xl font-bold">{title}</h2>
-                </div>
-                
-                <div className="space-y-4">
-                    <VoiceInput 
-                        multiline
-                        placeholder="اپنا مسئلہ یا سوال یہاں لکھیں..."
-                        value={query}
-                        onChange={setQuery}
-                    />
-                    <button onClick={handleAsk} disabled={loading} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all disabled:opacity-70 flex justify-center gap-2">
-                        {loading ? <Loader2 className="animate-spin" /> : <>پوچھیں <Send size={20} /></>}
-                    </button>
-                </div>
-            </div>
-            <GenericResult loading={loading} result={result} title={title} />
-        </div>
-    );
-};
-
-// --- Horoscope Section ---
-export const HoroscopeSection = ({ onBack }: SectionProps) => {
-    const today = new Date();
-    const defaultDay = today.toLocaleDateString('ur-PK', { weekday: 'long' });
-    const defaultDate = today.toLocaleDateString('ur-PK', { dateStyle: 'long' });
-    
-    const [data, setData] = useState({ 
-        name: '', 
-        motherName: '', 
-        dob: '', 
-        birthTime: '',
-        day: defaultDay,
-        date: defaultDate,
-    });
-    const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<string | null>(null);
-
-    const handleAnalyze = async () => {
-        if(!data.name) return alert("نام لکھنا ضروری ہے");
-        setLoading(true);
-        const res = await getHoroscopeAnalysis(data, 'chart');
-        setResult(res);
-        setLoading(false);
-    };
-
-    return (
-        <div className="max-w-2xl mx-auto animate-fade-in">
-            <BackButton onClick={onBack} />
-            <div className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100">
-                <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                    <div className="p-3 bg-orange-100 text-orange-600 rounded-xl"><Star size={24} /></div>
-                    <h2 className="text-2xl font-bold text-gray-800">زائچہ قسمت (Horoscope)</h2>
-                </div>
-                
-                <div className="space-y-4">
-                    <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="آپ کا نام" />
-                    <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <VoiceInput value={data.day} onChange={v => setData({...data, day: v})} placeholder="دن" />
-                        <VoiceInput value={data.date} onChange={v => setData({...data, date: v})} placeholder="تاریخ" />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                         <VoiceInput value={data.dob} onChange={v => setData({...data, dob: v})} placeholder="تاریخ پیدائش" />
-                         <VoiceInput value={data.birthTime} onChange={v => setData({...data, birthTime: v})} placeholder="وقت پیدائش" />
-                    </div>
-
-                    <button onClick={handleAnalyze} disabled={loading} className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-orange-700 transition-all disabled:opacity-70 flex justify-center items-center gap-2">
-                        {loading ? <Loader2 className="animate-spin" /> : <>زائچہ نکالیں <Sparkles size={20} /></>}
-                    </button>
-                </div>
-            </div>
-            <GenericResult loading={loading} result={result} title="آپ کا زائچہ" />
-        </div>
-    );
-};
-
-// --- Black Magic Section ---
-export const BlackMagicSection = ({ onBack }: SectionProps) => {
-    const today = new Date();
-    const defaultDay = today.toLocaleDateString('ur-PK', { weekday: 'long' });
-    const defaultDate = today.toLocaleDateString('ur-PK', { dateStyle: 'long' });
-
-    const [data, setData] = useState({ 
-        name: '', 
-        motherName: '', 
-        dob: '', 
-        birthTime: '',
-        day: defaultDay,
-        date: defaultDate,
-        problem: '' 
-    });
-    const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<string | null>(null);
-
-    const handleDiagnose = async () => {
-        if(!data.name) return alert("نام لکھنا ضروری ہے");
-        setLoading(true);
-        const res = await getBlackMagicDiagnosis(data, 'diagnosis');
-        setResult(res);
-        setLoading(false);
-    };
-
-    return (
-        <div className="max-w-2xl mx-auto animate-fade-in">
-            <BackButton onClick={onBack} />
-            <div className="bg-white rounded-3xl shadow-xl p-6 border border-red-100">
-                <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                    <div className="p-3 bg-red-100 text-red-600 rounded-xl"><ShieldCheck size={24} /></div>
-                    <h2 className="text-2xl font-bold text-gray-800">کالا جادو / بندش (Diagnosis)</h2>
-                </div>
-                
-                <div className="space-y-4">
-                    <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="متاثرہ شخص کا نام" />
-                    <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <VoiceInput value={data.day} onChange={v => setData({...data, day: v})} placeholder="دن" />
-                        <VoiceInput value={data.date} onChange={v => setData({...data, date: v})} placeholder="تاریخ" />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                         <VoiceInput value={data.dob} onChange={v => setData({...data, dob: v})} placeholder="تاریخ پیدائش" />
-                         <VoiceInput value={data.birthTime} onChange={v => setData({...data, birthTime: v})} placeholder="وقت پیدائش" />
-                    </div>
-
-                    <VoiceInput value={data.problem} onChange={v => setData({...data, problem: v})} placeholder="مسئلہ / علامات (اختیاری)" multiline />
-
-                    <button onClick={handleDiagnose} disabled={loading} className="w-full py-4 bg-red-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-red-700 transition-all disabled:opacity-70 flex justify-center items-center gap-2">
-                        {loading ? <Loader2 className="animate-spin" /> : <>تشخیص کریں <Activity size={20} /></>}
-                    </button>
-                </div>
-            </div>
-            <GenericResult loading={loading} result={result} title="روحانی تشخیص" />
-        </div>
-    );
-};
-
-// --- Time Science Section ---
-export const TimeScienceSection = ({ onBack }: SectionProps) => {
-    const today = new Date();
-    const defaultDay = today.toLocaleDateString('ur-PK', { weekday: 'long' });
-    const defaultDate = today.toLocaleDateString('ur-PK', { dateStyle: 'long' });
-
-    const [data, setData] = useState({ 
-        name: '', 
-        motherName: '', 
-        dob: '', 
-        birthTime: '',
-        day: defaultDay,
-        date: defaultDate,
-        question: ''
-    });
-    const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<string | null>(null);
-
-    const handleAnalyze = async () => {
-        setLoading(true);
-        // We use a custom prompt for Time Science combining user data
-        const prompt = `
-        علم الساعات (Time Science) کے اصولوں پر تجزیہ کریں۔
-        نام: ${data.name}
-        والدہ: ${data.motherName}
-        تاریخ پیدائش: ${data.dob}
-        وقت پیدائش: ${data.birthTime}
-        موجودہ دن اور تاریخ: ${data.day}, ${data.date}
-        سوال/مقصد: ${data.question}
-
-        بتائیں کہ یہ وقت ان کے لیے کیسا ہے؟ کیا کام کرنا چاہیے؟
-        `;
-        const res = await generateSpiritualResponse(prompt);
-        setResult(res);
-        setLoading(false);
-    };
-
-    return (
-        <div className="max-w-2xl mx-auto animate-fade-in">
+        <div className="max-w-3xl mx-auto animate-fade-in">
              <BackButton onClick={onBack} />
-             <div className="bg-white rounded-3xl shadow-xl p-6 border border-purple-100">
-                <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                    <div className="p-3 bg-purple-100 text-purple-600 rounded-xl"><Clock size={24} /></div>
-                    <h2 className="text-2xl font-bold text-gray-800">علم الساعات (Time Science)</h2>
+             <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-gray-500">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-gray-100 rounded-full"><FileText size={24} className="text-gray-700"/></div>
+                    <h2 className="text-2xl font-bold text-gray-800">دستاویز ریڈر (OCR)</h2>
                 </div>
+                
+                <FileUploader onSelect={setImage} label="رپورٹ یا تحریر کی تصویر اپلوڈ کریں" />
+                
+                {image && (
+                     <div className="w-full h-48 bg-gray-100 rounded-lg overflow-hidden relative mt-4">
+                        <img src={image} alt="Preview" className="w-full h-full object-contain" />
+                        <button onClick={() => setImage('')} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"><X size={14}/></button>
+                     </div>
+                )}
 
-                <div className="space-y-4">
-                    <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="نام (اختیاری)" />
-                    <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام (اختیاری)" />
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <VoiceInput value={data.day} onChange={v => setData({...data, day: v})} placeholder="دن" />
-                        <VoiceInput value={data.date} onChange={v => setData({...data, date: v})} placeholder="تاریخ" />
-                    </div>
+                <button onClick={handleScan} disabled={loading || !image} className="w-full mt-4 py-3 bg-gray-700 text-white rounded-xl font-bold shadow-lg hover:bg-gray-800 transition-all flex items-center justify-center gap-2">
+                    {loading ? <Loader2 className="animate-spin" /> : <Search size={18} />} تجزیہ کریں
+                </button>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                         <VoiceInput value={data.dob} onChange={v => setData({...data, dob: v})} placeholder="تاریخ پیدائش" />
-                         <VoiceInput value={data.birthTime} onChange={v => setData({...data, birthTime: v})} placeholder="وقت پیدائش" />
-                    </div>
-
-                    <VoiceInput value={data.question} onChange={v => setData({...data, question: v})} placeholder="کیا کام کرنا چاہتے ہیں؟ (سوال)" multiline />
-
-                    <button onClick={handleAnalyze} disabled={loading} className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-purple-700 transition-all disabled:opacity-70 flex justify-center items-center gap-2">
-                        {loading ? <Loader2 className="animate-spin" /> : <>ساعت معلوم کریں <Sparkles size={20} /></>}
-                    </button>
-                </div>
+                <GenericResult loading={loading} result={result} title="دستاویز کا خلاصہ" />
              </div>
-             <GenericResult loading={loading} result={result} title="علم الساعات رپورٹ" />
         </div>
     );
 };
 
-// --- Wazaif Section ---
-export const WazaifSection = ({ onBack }: SectionProps) => {
-    // Similar input structure as others
-    const today = new Date();
-    const defaultDay = today.toLocaleDateString('ur-PK', { weekday: 'long' });
-    const defaultDate = today.toLocaleDateString('ur-PK', { dateStyle: 'long' });
-
-    const [data, setData] = useState({ 
-        name: '', 
-        motherName: '', 
-        dob: '', 
-        birthTime: '',
-        day: defaultDay,
-        date: defaultDate,
-        purpose: ''
-    });
-    const [loading, setLoading] = useState(false);
+export const HoroscopeSection = ({ onBack }: SectionProps) => {
+    const [tab, setTab] = useState<'chart' | 'match' | 'istikhara'>('chart');
+    const [data, setData] = useState<any>({ name: '', motherName: '', dob: '', date: new Date().toLocaleDateString(), question: '', name2: '' });
     const [result, setResult] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
-    const handleGetWazifa = async () => {
-        if(!data.purpose && !data.name) return alert("براہ کرم نام اور مقصد لکھیں");
+    const handleSubmit = async () => {
         setLoading(true);
-        const prompt = `
-        استخارہ اور وظائف سیکشن:
-        نام: ${data.name}
-        والدہ: ${data.motherName}
-        تاریخ پیدائش: ${data.dob}
-        مقصد/پریشانی: ${data.purpose}
-
-        براہ کرم قرآن و سنت کی روشنی میں بہترین وظیفہ اور دعا تجویز کریں۔
-        `;
-        const res = await generateSpiritualResponse(prompt);
+        const res = await getHoroscopeAnalysis(data, tab, data);
         setResult(res);
         setLoading(false);
     };
 
     return (
-         <div className="max-w-2xl mx-auto animate-fade-in">
-            <BackButton onClick={onBack} />
-            <div className="bg-white rounded-3xl shadow-xl p-6 border border-teal-100">
-                <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                    <div className="p-3 bg-teal-100 text-teal-600 rounded-xl"><BookOpen size={24} /></div>
-                    <h2 className="text-2xl font-bold text-gray-800">استخارہ و وظائف</h2>
+        <div className="max-w-3xl mx-auto animate-fade-in">
+             <BackButton onClick={onBack} />
+             <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-orange-500">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-orange-50 rounded-full"><Star size={24} className="text-orange-600"/></div>
+                    <h2 className="text-2xl font-bold text-gray-800">زائچہ و نجوم</h2>
+                </div>
+
+                <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl">
+                    <button onClick={() => { setTab('chart'); setResult(null); }} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'chart' ? 'bg-white shadow text-orange-600' : 'text-gray-500'}`}>زائچہ قسمت</button>
+                    <button onClick={() => { setTab('match'); setResult(null); }} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'match' ? 'bg-white shadow text-orange-600' : 'text-gray-500'}`}>رشتہ/پارٹنر</button>
+                    <button onClick={() => { setTab('istikhara'); setResult(null); }} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'istikhara' ? 'bg-white shadow text-orange-600' : 'text-gray-500'}`}>استخارہ</button>
                 </div>
 
                 <div className="space-y-4">
-                    <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="آپ کا نام" />
-                    <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <VoiceInput value={data.day} onChange={v => setData({...data, day: v})} placeholder="دن" />
-                        <VoiceInput value={data.date} onChange={v => setData({...data, date: v})} placeholder="تاریخ" />
-                    </div>
+                     <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="اپنا نام" />
+                     {tab === 'chart' && (
+                        <>
+                             <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
+                             <input type="date" className="w-full p-3 border rounded-xl" onChange={e => setData({...data, dob: e.target.value})} />
+                             <input type="time" className="w-full p-3 border rounded-xl" onChange={e => setData({...data, birthTime: e.target.value})} />
+                        </>
+                     )}
+                     {tab === 'match' && (
+                         <>
+                             <VoiceInput value={data.name2} onChange={v => setData({...data, name2: v})} placeholder="دوسرا نام (شریک)" />
+                             <select className="w-full p-3 border rounded-xl" onChange={e => setData({...data, relationType: e.target.value})}>
+                                 <option>شادی</option>
+                                 <option>دوستی</option>
+                                 <option>کاروبار</option>
+                             </select>
+                         </>
+                     )}
+                     {tab === 'istikhara' && (
+                         <VoiceInput value={data.question} onChange={v => setData({...data, question: v})} placeholder="اپنا سوال پوچھیں..." multiline />
+                     )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                         <VoiceInput value={data.dob} onChange={v => setData({...data, dob: v})} placeholder="تاریخ پیدائش" />
-                         <VoiceInput value={data.birthTime} onChange={v => setData({...data, birthTime: v})} placeholder="وقت پیدائش" />
-                    </div>
-
-                    <VoiceInput value={data.purpose} onChange={v => setData({...data, purpose: v})} placeholder="کس مقصد کے لیے وظیفہ چاہیے؟" multiline />
-
-                    <button onClick={handleGetWazifa} disabled={loading} className="w-full py-4 bg-teal-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-teal-700 transition-all disabled:opacity-70 flex justify-center items-center gap-2">
-                        {loading ? <Loader2 className="animate-spin" /> : <>وظیفہ حاصل کریں <BookOpen size={20} /></>}
-                    </button>
+                     <button onClick={handleSubmit} disabled={loading} className="w-full py-3 bg-orange-600 text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2">
+                         {loading ? <Loader2 className="animate-spin"/> : <Sparkles size={18} />} معلوم کریں
+                     </button>
                 </div>
-            </div>
-            <GenericResult loading={loading} result={result} title="آپ کا وظیفہ" />
-         </div>
+                <GenericResult loading={loading} result={result} title={tab === 'chart' ? 'زائچہ' : 'نتیجہ'} />
+             </div>
+        </div>
     );
 };
 
+export const BlackMagicSection = ({ onBack }: SectionProps) => {
+    const [tab, setTab] = useState<'diagnosis' | 'history' | 'protection'>('diagnosis');
+    const [data, setData] = useState({ name: '', motherName: '', problem: '' });
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState<string | null>(null);
 
-// --- Contact Section ---
-export const ContactSection = ({ onBack }: SectionProps) => {
+    const handleSubmit = async () => {
+        setLoading(true);
+        const res = await getBlackMagicDiagnosis(data, tab);
+        setResult(res);
+        setLoading(false);
+    };
+
     return (
-        <div className="max-w-2xl mx-auto animate-fade-in">
-            <BackButton onClick={onBack} />
-            <div className="bg-white rounded-3xl shadow-xl p-8 border border-yellow-100 text-center">
-                <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6 text-yellow-700">
-                    <Phone size={40} />
+        <div className="max-w-3xl mx-auto animate-fade-in">
+             <BackButton onClick={onBack} />
+             <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-red-600">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-red-50 rounded-full"><ShieldCheck size={24} className="text-red-700"/></div>
+                    <h2 className="text-2xl font-bold text-gray-800">روحانی تشخیص و علاج</h2>
                 </div>
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">رابطہ کریں</h2>
-                <p className="text-gray-500 mb-8">کسی بھی ذاتی رہنمائی یا اپائنٹمنٹ کے لیے نیچے دیے گئے نمبرز پر رابطہ کریں۔</p>
                 
+                <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl">
+                    {['diagnosis', 'history', 'protection'].map(t => (
+                        <button key={t} onClick={() => { setTab(t as any); setResult(null); }} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === t ? 'bg-white shadow text-red-800' : 'text-gray-500'}`}>
+                            {t === 'diagnosis' ? 'تشخیص' : t === 'history' ? 'ہسٹری' : 'علاج/حصار'}
+                        </button>
+                    ))}
+                </div>
+
                 <div className="space-y-4">
-                    <div className="p-4 bg-gray-50 rounded-2xl flex items-center gap-4 hover:bg-emerald-50 transition-colors border border-gray-100">
-                        <div className="bg-green-500 text-white p-3 rounded-full"><Phone size={20} /></div>
-                        <div className="text-right">
-                            <p className="font-bold text-gray-800 text-lg">حکیم غلام یاسین آرائیں</p>
-                            <p className="text-emerald-600 font-bold" dir="ltr">+92 300 1234567</p>
-                            <p className="text-xs text-gray-400">کہروڑ پکا</p>
-                        </div>
-                    </div>
-
-                    <div className="p-4 bg-gray-50 rounded-2xl flex items-center gap-4 hover:bg-emerald-50 transition-colors border border-gray-100">
-                        <div className="bg-blue-500 text-white p-3 rounded-full"><Phone size={20} /></div>
-                        <div className="text-right">
-                            <p className="font-bold text-gray-800 text-lg">حاجی اشفاق احمد</p>
-                            <p className="text-blue-600 font-bold" dir="ltr">+92 300 7654321</p>
-                            <p className="text-xs text-gray-400">خانیوال (ماہر عملیات)</p>
-                        </div>
-                    </div>
+                    <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="مریض کا نام" />
+                    <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
+                    {tab !== 'diagnosis' && (
+                        <VoiceInput value={data.problem} onChange={v => setData({...data, problem: v})} placeholder="مسئلہ بیان کریں..." multiline />
+                    )}
+                    <button onClick={handleSubmit} disabled={loading} className="w-full py-3 bg-red-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg">
+                        {loading ? <Loader2 className="animate-spin"/> : <Shield size={18}/>} چیک کریں
+                    </button>
                 </div>
-
-                <div className="mt-8 pt-6 border-t border-gray-100">
-                    <p className="text-xs text-gray-400">Apps Talk SMC Pvt Ltd © 2024</p>
-                </div>
-            </div>
+                <GenericResult loading={loading} result={result} title="رپورٹ" />
+             </div>
         </div>
+    );
+};
+
+export const WazaifSection = ({ onBack }: SectionProps) => {
+    return (
+        <HoroscopeSection onBack={onBack} /> // Reuse or create specific
+    );
+};
+
+export const TimeScienceSection = ({ onBack }: SectionProps) => {
+    return (
+        <GeneralAISection 
+            title="علم الساعات (Time Science)"
+            icon={Clock}
+            colorClass="border-purple-500"
+            promptContext="بطور ماہر علم الساعات، موجودہ وقت کی تاثیر، سعد و نحس گھڑی، اور اس وقت کیے جانے والے کام کے انجام کے بارے میں بتائیں۔"
+            onBack={onBack}
+        />
     );
 };

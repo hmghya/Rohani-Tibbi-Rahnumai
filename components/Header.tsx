@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppSection } from '../types';
-import { Menu, X, Home, Clock, Calculator, Stethoscope, Watch, Star, Moon, Shield, FileText, Phone, BookOpen, CalendarDays } from 'lucide-react';
+import { Menu, X, Home, Clock, Calculator, Stethoscope, Watch, Star, Moon, Shield, FileText, Phone, BookOpen, CalendarDays, Settings } from 'lucide-react';
 
 interface HeaderProps {
   currentSection: AppSection;
@@ -50,6 +50,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
     { id: AppSection.BlackMagic, label: 'کالا جادو', icon: Shield },
     { id: AppSection.Documents, label: 'دستاویز ریڈر', icon: FileText },
     { id: AppSection.Contact, label: 'رابطہ', icon: Phone },
+    { id: AppSection.Settings, label: 'ترتیبات (Settings)', icon: Settings },
   ];
 
   return (

@@ -3,8 +3,78 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import PrivacyModal from './components/PrivacyModal';
 import { AppSection } from './types';
-import { NumerologySection, MedicalSection, DocumentSection, GeneralAISection, ContactSection, PrayerTimesSection, HoroscopeSection, BlackMagicSection, WazaifSection, TimeScienceSection, CalendarSection } from './components/FeatureComponents';
-import { Clock, Moon, Shield, Sun, Star, Stethoscope, Calculator, BookOpen, Phone, FileText, ArrowRight, CalendarDays, Sparkles, MoveLeft } from 'lucide-react';
+import { NumerologySection, MedicalSection, DocumentSection, GeneralAISection, ContactSection, PrayerTimesSection, HoroscopeSection, BlackMagicSection, WazaifSection, TimeScienceSection, CalendarSection, SettingsSection } from './components/FeatureComponents';
+import { Clock, Moon, Shield, Sun, Star, Stethoscope, Calculator, BookOpen, Phone, FileText, ArrowRight, CalendarDays, Sparkles, MoveLeft, Key, AlertTriangle } from 'lucide-react';
+import { hasValidApiKey, saveApiKey } from './services/geminiService';
+
+// --- API Key Modal Component ---
+const ApiKeyModal = () => {
+  const [key, setKey] = useState('');
+
+  const handleSave = () => {
+    if (key.length < 20) {
+      alert("براہ کرم درست API Key درج کریں۔");
+      return;
+    }
+    saveApiKey(key);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[250] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl border-t-4 border-yellow-500">
+        <div className="flex justify-center mb-4 text-yellow-500">
+            <AlertTriangle className="w-16 h-16" />
+        </div>
+        
+        <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">
+          API Key درکار ہے
+        </h2>
+        
+        <p className="text-center text-gray-500 text-sm mb-6 leading-relaxed">
+          یہ ایپ فری ہوسٹنگ پر چل رہی ہے، اس لیے حفاظتی وجوہات کی بنا پر API Key شامل نہیں ہے۔
+          <br />
+          براہ کرم ایپ استعمال کرنے کے لیے اپنی 
+          <span className="font-bold text-emerald-600 mx-1">Google Gemini API Key</span> 
+          درج کریں۔
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 mr-1">اپنی API Key یہاں پیسٹ کریں:</label>
+            <div className="relative">
+              <input 
+                type="text" 
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                placeholder="AIzaSy..."
+                className="w-full p-3 pl-10 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none text-left font-mono text-sm"
+              />
+              <Key className="absolute left-3 top-3.5 text-gray-400" size={16} />
+            </div>
+          </div>
+
+          <button 
+            onClick={handleSave}
+            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+          >
+            محفوظ کریں اور چلائیں <ArrowRight size={18} />
+          </button>
+          
+          <div className="text-center pt-2">
+            <a 
+              href="https://aistudio.google.com/app/apikey" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 text-xs font-bold hover:underline"
+            >
+              نئی API Key حاصل کرنے کے لیے یہاں کلک کریں
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // --- Welcome Screen Component ---
 const WelcomeScreen = ({ onEnter }: { onEnter: () => void }) => {
@@ -71,12 +141,18 @@ const App: React.FC = () => {
   const [currentSection, setCurrentSection] = useState<AppSection>(AppSection.Home);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [needsApiKey, setNeedsApiKey] = useState(false);
 
   useEffect(() => {
-    // Check local storage if privacy was accepted previously
+    // Check Privacy
     const accepted = localStorage.getItem('privacy_accepted');
     if (accepted === 'true') {
       setPrivacyAccepted(true);
+    }
+    
+    // Check API Key
+    if (!hasValidApiKey()) {
+      setNeedsApiKey(true);
     }
   }, []);
 
@@ -92,7 +168,12 @@ const App: React.FC = () => {
 
   const goBack = () => setCurrentSection(AppSection.Home);
 
-  // If welcome screen is active, show it
+  // 1. If API Key is missing, show Modal (Highest Priority)
+  if (needsApiKey) {
+    return <ApiKeyModal />;
+  }
+
+  // 2. If Welcome screen is active, show it
   if (showWelcome) {
     return <WelcomeScreen onEnter={() => setShowWelcome(false)} />;
   }
@@ -127,6 +208,8 @@ const App: React.FC = () => {
         return <BlackMagicSection onBack={goBack} />;
       case AppSection.Contact:
         return <ContactSection onBack={goBack} />;
+      case AppSection.Settings:
+        return <SettingsSection onBack={goBack} />;
       case AppSection.Home:
       default:
         return <HomeDashboard onNavigate={setCurrentSection} />;

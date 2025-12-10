@@ -11,7 +11,8 @@ export enum AppSection {
   BlackMagic = 'BlackMagic', // Kala Jadu
   Medical = 'Medical', // Ilm-e-Tib
   Documents = 'Documents', // OCR
-  Contact = 'Contact' // Rabta
+  Contact = 'Contact', // Rabta
+  Settings = 'Settings' // New Settings Section
 }
 
 export interface NavItem {

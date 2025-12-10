@@ -1,35 +1,114 @@
 import { GoogleGenAI, GenerateContentResponse, HarmCategory, HarmBlockThreshold } from "@google/genai";
 
+// Storage Key
+const STORAGE_KEY_API = 'user_gemini_api_key';
+
+// Helper to save key from UI
+export const saveApiKey = (key: string) => {
+  if (!key) return;
+  localStorage.setItem(STORAGE_KEY_API, key.trim());
+  window.location.reload();
+};
+
+// Helper to remove key
+export const removeApiKey = () => {
+  localStorage.removeItem(STORAGE_KEY_API);
+  window.location.reload();
+};
+
+// Helper to check if we have a key (Env or Local)
+export const hasValidApiKey = (): boolean => {
+  // Check Local Storage
+  if (localStorage.getItem(STORAGE_KEY_API)) return true;
+
+  // Check Vite (VITE_API_KEY)
+  try {
+    const meta = import.meta as any;
+    if (typeof meta !== 'undefined' && meta.env && meta.env.VITE_API_KEY) return true;
+  } catch (e) {}
+
+  // Check Process Envs (Standard, Next.js, CRA)
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      if (process.env.API_KEY) return true;
+      if (process.env.NEXT_PUBLIC_API_KEY) return true;
+      if (process.env.REACT_APP_API_KEY) return true;
+    }
+  } catch (e) {}
+
+  return false;
+};
+
+// Validate API Key by making a real request
+export const validateGeminiApiKey = async (apiKey: string): Promise<boolean> => {
+  if (!apiKey) return false;
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    // Use the fastest model for a quick check
+    await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: { parts: [{ text: 'Hello' }] },
+    });
+    return true;
+  } catch (error) {
+    console.error("API Key Validation Failed:", error);
+    return false;
+  }
+};
+
 // Initialize Gemini API
 const getAiClient = () => {
   let apiKey: string | undefined;
   
-  try {
-    // Attempt 1: Safe access via process.env if available (Node/Polyfilled environments)
-    // @ts-ignore
-    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-       // @ts-ignore
-       apiKey = process.env.API_KEY;
-    }
-    
-    // Attempt 2: Direct access fallback. 
-    // This is crucial for bundlers (Vite/Webpack) that replace the string 'process.env.API_KEY' 
-    // with the actual value during build, even if the 'process' object itself doesn't exist.
-    if (!apiKey) {
-        try {
-            // @ts-ignore
-            apiKey = process.env.API_KEY;
-        } catch (e) {
-            // ReferenceError is expected here if process is undefined and bundler didn't replace the string
+  // Priority 1: Local Storage (User entered via UI)
+  const localKey = localStorage.getItem(STORAGE_KEY_API);
+  if (localKey) {
+    apiKey = localKey;
+  }
+
+  // Priority 2: Vite Environment Variables (VITE_API_KEY) - Best for Vercel/Vite
+  if (!apiKey) {
+      try {
+        const meta = import.meta as any;
+        if (typeof meta !== 'undefined' && meta.env && meta.env.VITE_API_KEY) {
+            apiKey = meta.env.VITE_API_KEY;
         }
-    }
-  } catch (e) {
-    console.debug("API Key access error", e);
+      } catch (e) {}
+  }
+
+  // Priority 3: Next.js Public Env (NEXT_PUBLIC_API_KEY)
+  if (!apiKey) {
+      try {
+          // @ts-ignore
+          if (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_API_KEY) {
+              apiKey = process.env.NEXT_PUBLIC_API_KEY;
+          }
+      } catch (e) {}
+  }
+
+  // Priority 4: React App Env (REACT_APP_API_KEY)
+  if (!apiKey) {
+      try {
+          // @ts-ignore
+          if (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_KEY) {
+              apiKey = process.env.REACT_APP_API_KEY;
+          }
+      } catch (e) {}
+  }
+
+  // Priority 5: Standard Env (API_KEY) - Only works if explicitly exposed by bundler
+  if (!apiKey) {
+      try {
+        // @ts-ignore
+        if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+           // @ts-ignore
+           apiKey = process.env.API_KEY;
+        }
+      } catch (e) {}
   }
 
   // Final check
   if (!apiKey || apiKey.trim() === '') {
-    // Throw a specific code we can catch later to give a better error message
     throw new Error("MISSING_API_KEY_ENV");
   }
 
@@ -59,25 +138,30 @@ const getFriendlyErrorMessage = (error: any): string => {
     
     // 1. Missing Key (Build Issue)
     if (msg.includes('missing_api_key_env') || msg.includes('api key is required')) {
-        return `### ⚠️ کنفیگریشن ایرر (Missing API Key)
+        return `### ⚠️ API Key کنفیگریشن کا مسئلہ
 
-**مسئلہ:** ایپ کو چلانے کے لیے **API Key** نہیں ملی۔
+**مسئلہ:** سرور پر API Key درست طریقے سے سیٹ نہیں ہے۔
 
-**حل:**
-اگر آپ نے اس ایپ کو Deploy کیا ہے، تو براہ کرم اپنی ہوسٹنگ سروس (جیسے Vercel, Netlify) کی **Environment Variables** سیٹنگز میں جائیں اور وہاں:
-- **Key:** \`API_KEY\`
-- **Value:** (آپ کی Google Gemini API Key)
-درج کریں اور دوبارہ ڈیپلائے کریں۔`;
+**حل برائے ڈویلپر (Vercel/Hosting):**
+1. اپنے ہوسٹنگ ڈیش بورڈ (Vercel Settings) میں جائیں۔
+2. ایک نیا Environment Variable شامل کریں جس کا نام **VITE_API_KEY** ہو۔
+3. اس میں اپنی Gemini API Key پیسٹ کریں۔
+4. ایپ کو **Redeploy** کریں۔
+
+**حل برائے صارف:**
+ایپ کو ریفریش کریں اور شروع میں اپنی ذاتی Key درج کریں۔`;
     }
 
     // 2. Domain Blocked or Bad Key (Cloud Console Issue)
     if (msg.includes('api key') || msg.includes('unauthorized') || msg.includes('403') || msg.includes('permission denied') || msg.includes('referrer')) {
-        return `### 🚫 رسائی کی اجازت نہیں (Domain Error)
+        return `### 🚫 رسائی کی اجازت نہیں (Domain/Key Error)
         
-**مسئلہ:** اس ویب سائٹ ڈومین کو API استعمال کرنے کی اجازت نہیں ہے (403 Forbidden)۔
+**مسئلہ:** فراہم کردہ API Key یا ڈومین کو اجازت نہیں ہے۔ (Error 403)
 
 **حل:**
-Google Cloud Console میں جائیں، اپنی API Key کی سیٹنگز کھولیں، اور **Website Restrictions** میں اس ویب سائٹ کا لنک (URL) شامل کریں۔`;
+1. یقینی بنائیں کہ آپ نے درست API Key کاپی کی ہے۔
+2. اگر آپ نے Key پر پابندی (Restriction) لگائی ہے تو اس ویب سائٹ کو اجازت دیں۔
+3. نئی Key بنا کر دوبارہ کوشش کریں۔ (براؤزر کا ڈیٹا کلیئر کریں)`;
     }
 
     // 3. Quota Exceeded
