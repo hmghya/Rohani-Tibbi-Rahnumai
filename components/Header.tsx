@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { AppSection } from '../types';
-import { Menu, X, Home, Clock, Calculator, Stethoscope, Watch, Star, Moon, Shield, FileText, Phone, BookOpen, CalendarDays, Settings } from 'lucide-react';
+import { Menu, X, Home, Clock, Calculator, Stethoscope, Watch, Star, Moon, Shield, FileText, Phone, BookOpen, CalendarDays, Settings, Fingerprint } from 'lucide-react';
 
 interface HeaderProps {
   currentSection: AppSection;
@@ -41,6 +42,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
     { id: AppSection.Home, label: 'ہوم (Home)', icon: Home },
     { id: AppSection.Calendar, label: 'کیلنڈر (Calendar)', icon: CalendarDays },
     { id: AppSection.PrayerTimes, label: 'اوقاتِ نماز', icon: Clock },
+    { id: AppSection.Tasbeeh, label: 'تسبیح کاؤنٹر', icon: Fingerprint },
     { id: AppSection.Numerology, label: 'علم الاعداد', icon: Calculator },
     { id: AppSection.Wazaif, label: 'استخارہ', icon: BookOpen },
     { id: AppSection.Medical, label: 'امراض کی تشخیص', icon: Stethoscope },

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Send, BookOpen, Heart, Moon, Sun, Clock, Eye, ChevronRight, Stethoscope, ArrowRight, MapPin, Sunrise, Sunset, Bell, BellOff, Volume2, X, Gift, Calendar, Zap, Users, Home, Key, Hash, ShieldCheck, Activity, AlertTriangle, Briefcase, PenTool, Car, Ghost, Smile, Star, Phone, UserPlus, HelpCircle, Smartphone, Shield, Save, RefreshCw, Settings, Play, Pause, RotateCcw, Calculator, FileText, Edit2, Check, Fingerprint, Search, History, TrendingUp, Gem, Palette, HeartPulse, CalendarDays, ChevronLeft, Pill, Mic, ThermometerSun, CloudSun, Loader2, Sparkles, MessageSquare, User, Scale, SearchCheck, Globe, Navigation, ChevronDown, Plus, Minus, Trash2 } from 'lucide-react';
-import { getMedicalDiagnosis, getNumerologyAnalysis, scanDocument, generateSpiritualResponse, getInitialDiagnosis, getHoroscopeAnalysis, getBlackMagicDiagnosis, analyzeMedicine, saveApiKey, removeApiKey, validateGeminiApiKey } from '../services/geminiService';
+import { Upload, Send, BookOpen, Heart, Moon, Sun, Clock, Eye, ChevronRight, Stethoscope, ArrowRight, MapPin, Sunrise, Sunset, Bell, BellOff, Volume2, X, Gift, Calendar, Zap, Users, Home, Key, Hash, ShieldCheck, Activity, AlertTriangle, Briefcase, PenTool, Car, Ghost, Smile, Star, Phone, UserPlus, HelpCircle, Smartphone, Shield, Save, RefreshCw, Settings, Play, Pause, RotateCcw, Calculator, FileText, Edit2, Check, Fingerprint, Search, History, TrendingUp, Gem, Palette, HeartPulse, CalendarDays, ChevronLeft, Pill, Mic, ThermometerSun, CloudSun, Loader2, Sparkles, MessageSquare, User, Scale, SearchCheck, Globe, Navigation, ChevronDown, Plus, Minus, Trash2, Code2, Watch, Camera, Mail, Info, Book, HeartHandshake, Sparkle } from 'lucide-react';
+import { getMedicalDiagnosis, getNumerologyAnalysis, scanDocument, generateSpiritualResponse, getInitialDiagnosis, getHoroscopeAnalysis, getBlackMagicDiagnosis, analyzeMedicine } from '../services/geminiService';
 import GenericResult from './GenericResult';
 
 interface SectionProps {
@@ -9,6 +9,31 @@ interface SectionProps {
 }
 
 // --- Helper Functions (Top Level) ---
+
+const abjadMap: Record<string, number> = {
+    'ا': 1, 'آ': 1, 'ء': 1, 'ب': 2, 'پ': 2, 'ج': 3, 'چ': 3, 'د': 4, 'ہ': 5, 'ۃ': 5,
+    'و': 6, 'ؤ': 6, 'ز': 7, 'ژ': 7, 'ح': 8, 'ط': 9, 'ی': 10, 'ئ': 10, 'ے': 10,
+    'ک': 20, 'گ': 20, 'ل': 30, 'م': 40, 'ن': 50, 'س': 60, 'ع': 70, 'ف': 80,
+    'ص': 90, 'ق': 100, 'ر': 200, 'ش': 300, 'ت': 400, 'ث': 500, 'خ': 600,
+    'ذ': 700, 'ض': 800, 'ظ': 900, 'غ': 1000
+};
+
+const calculateAbjad = (text: string): number => {
+    let total = 0;
+    for (const char of text) {
+        if (abjadMap[char]) {
+            total += abjadMap[char];
+        }
+    }
+    return total;
+};
+
+const getSingleDigit = (num: number): number => {
+    while (num > 9) {
+        num = num.toString().split('').reduce((acc, digit) => acc + parseInt(digit), 0);
+    }
+    return num;
+};
 
 const safeIntlFormat = (date: Date, locale: string, options: Intl.DateTimeFormatOptions) => {
     try {
@@ -67,104 +92,6 @@ const getHijriMonthUrdu = (date: Date) => {
 
 const getBikramiYear = (date: Date) => date.getFullYear() + 57;
 
-const getNanakShahiYear = (date: Date) => {
-    const month = date.getMonth();
-    const day = date.getDate();
-    if (month > 2 || (month === 2 && day >= 14)) {
-        return date.getFullYear() - 1468;
-    }
-    return date.getFullYear() - 1469;
-};
-
-// --- Prayer Time Helpers ---
-
-const adjustTimeStr = (timeStr: string, offsetMinutes: number) => {
-    if (!timeStr) return timeStr;
-    if (offsetMinutes === 0) return timeStr;
-    try {
-        const [time, period] = timeStr.trim().split(/\s+/);
-        let [hours, minutes] = time.split(':').map(Number);
-        
-        const isPM = period && period.toUpperCase() === 'PM';
-        const isAM = period && period.toUpperCase() === 'AM';
-
-        if (isPM && hours !== 12) hours += 12;
-        if (isAM && hours === 12) hours = 0;
-        
-        const date = new Date();
-        date.setHours(hours, minutes + offsetMinutes);
-        
-        let newHours = date.getHours();
-        const newMinutes = date.getMinutes();
-        const newPeriod = newHours >= 12 ? 'PM' : 'AM';
-        
-        if (newHours > 12) newHours -= 12;
-        if (newHours === 0) newHours = 12;
-        
-        return `${newHours}:${newMinutes.toString().padStart(2, '0')} ${newPeriod}`;
-    } catch (e) {
-        return timeStr;
-    }
-};
-
-const parseTimeToMinutes = (timeStr: string) => {
-    if (!timeStr) return 0;
-    try {
-        const cleanStr = timeStr.replace(/[\u0600-\u06FF]/g, '').trim(); 
-        const [time, period] = cleanStr.split(' ');
-        if (!time || !period) return 0;
-        let [hours, minutes] = time.split(':').map(Number);
-        if (isNaN(hours) || isNaN(minutes)) return 0;
-        
-        const isPM = period.toUpperCase() === 'PM';
-        const isAM = period.toUpperCase() === 'AM';
-        
-        if (isPM && hours !== 12) hours += 12;
-        if (isAM && hours === 12) hours = 0;
-        
-        return hours * 60 + minutes;
-    } catch (e) {
-        return 0;
-    }
-};
-
-const SPECIAL_DAYS_DATA = [
-    { d: 1, m: 1, label: 'نئے سال کا آغاز (New Year)' },
-    { d: 4, m: 1, label: 'بریل کا عالمی دن' },
-    { d: 24, m: 1, label: 'تعلیم کا عالمی دن' },
-    { d: 5, m: 2, label: 'یوم یکجہتی کشمیر (Kashmir Day)' },
-    { d: 21, m: 2, label: 'مادری زبانوں کا عالمی دن' },
-    { d: 8, m: 3, label: 'خواتین کا عالمی دن (Women\'s Day)' },
-    { d: 15, m: 3, label: 'انسدادِ اسلامو فوبیا کا عالمی دن (End of Islamophobia)' },
-    { d: 21, m: 3, label: 'جنگلات کا عالمی دن' },
-    { d: 22, m: 3, label: 'پانی کا عالمی دن (World Water Day)' },
-    { d: 23, m: 3, label: 'یوم پاکستان (Pakistan Day)' },
-    { d: 7, m: 4, label: 'صحت کا عالمی دن (World Health Day)' },
-    { d: 22, m: 4, label: 'کرہ ارض کا دن (Earth Day)' },
-    { d: 1, m: 5, label: 'یوم مزدور (Labour Day)' },
-    { d: 28, m: 5, label: 'یوم تکبیر' },
-    { d: 31, m: 5, label: 'تمباکو نوشی کے انسداد کا عالمی دن' },
-    { d: 5, m: 6, label: 'ماحولیات کا عالمی دن (Environment Day)' },
-    { d: 12, m: 6, label: 'چائلڈ لیبر کے خلاف عالمی دن' },
-    { d: 11, m: 7, label: 'آبادی کا عالمی دن' },
-    { d: 14, m: 8, label: 'یوم آزادی پاکستان (Independence Day)' },
-    { d: 6, m: 9, label: 'یوم دفاع (Defence Day)' },
-    { d: 8, m: 9, label: 'خواندگی کا عالمی دن' },
-    { d: 21, m: 9, label: 'امن کا عالمی دن' },
-    { d: 5, m: 10, label: 'اساتذہ کا عالمی دن (Teachers\' Day)' },
-    { d: 10, m: 10, label: 'ذہنی صحت کا عالمی دن' },
-    { d: 16, m: 10, label: 'خوراک کا عالمی دن' },
-    { d: 24, m: 10, label: 'اقوام متحدہ کا دن' },
-    { d: 9, m: 11, label: 'یوم اقبال (Iqbal Day)' },
-    { d: 14, m: 11, label: 'ذیابیطس کا عالمی دن' },
-    { d: 20, m: 11, label: 'بچوں کا عالمی دن (Children\'s Day)' },
-    { d: 25, m: 11, label: 'خواتین پر تشدد کے خاتمے کا دن' },
-    { d: 1, m: 12, label: 'ایڈز کا عالمی دن' },
-    { d: 10, m: 12, label: 'انسانی حقوق کا عالمی دن' },
-    { d: 18, m: 12, label: 'عربی زبان کا عالمی دن' },
-    { d: 25, m: 12, label: 'یوم قائد اعظم / کرسمس' },
-];
-
 // --- Shared Components (Top Level) ---
 
 const BackButton = ({ onClick }: { onClick: () => void }) => (
@@ -181,7 +108,7 @@ const BackButton = ({ onClick }: { onClick: () => void }) => (
   </div>
 );
 
-const FileUploader = ({ onSelect, label }: { onSelect: (b64: string) => void, label: string }) => {
+const FileUploader = ({ onSelect, label, icon: Icon = Upload }: { onSelect: (b64: string) => void, label: string, icon?: any }) => {
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -194,13 +121,13 @@ const FileUploader = ({ onSelect, label }: { onSelect: (b64: string) => void, la
   };
 
   return (
-    <div className="border-2 border-dashed border-emerald-200 rounded-2xl p-4 text-center bg-emerald-50/30 hover:bg-emerald-50 transition-all cursor-pointer relative w-full overflow-hidden group hover:border-emerald-400">
+    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-4 text-center bg-gray-50 hover:bg-emerald-50 transition-all cursor-pointer relative w-full overflow-hidden group hover:border-emerald-400">
       <input type="file" accept="image/*" onChange={handleFile} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-      <div className="transform group-hover:scale-110 transition-transform duration-300 bg-white p-2 rounded-full inline-block shadow-lg mb-1 text-emerald-600 ring-4 ring-emerald-50">
-        <Upload className="w-5 h-5" />
+      <div className="transform group-hover:scale-110 transition-transform duration-300 bg-white p-3 rounded-full inline-block shadow-md mb-2 text-emerald-600 ring-4 ring-gray-100 group-hover:ring-emerald-100">
+        <Icon className="w-6 h-6" />
       </div>
-      <p className="text-emerald-900 font-bold text-sm mb-0.5">{label}</p>
-      <p className="text-[10px] text-emerald-600 font-medium">یہاں کلک کریں یا تصویر ڈریگ کریں</p>
+      <p className="text-gray-900 font-bold text-sm mb-1">{label}</p>
+      <p className="text-[10px] text-gray-500 font-medium">یہاں کلک کریں یا فائل منتخب کریں</p>
     </div>
   );
 };
@@ -216,23 +143,23 @@ interface VoiceInputProps {
 
 const VoiceInput: React.FC<VoiceInputProps> = ({ value, onChange, placeholder, multiline = false, type = "text", className = "" }) => {
     const [isListening, setIsListening] = useState(false);
-    
-    // Check browser support
+    const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     const handleListen = () => {
         if (!SpeechRecognition) {
-            alert("معذرت، آپ کا براؤزر آواز کی شناخت کو سپورٹ نہیں کرتا۔");
+            alert("معذرت، آپ کا براؤزر آواز کی شناخت کو سپورٹ نہیں کرتا۔ برائے مہربانی گوگل کروم استعمال کریں۔");
             return;
         }
 
         const recognition = new SpeechRecognition();
-        recognition.lang = 'ur-PK'; // Urdu Pakistan
+        recognition.lang = 'ur-PK';
         recognition.continuous = false;
         recognition.interimResults = false;
 
         recognition.onstart = () => {
             setIsListening(true);
+            setStatus('idle');
         };
 
         recognition.onend = () => {
@@ -241,18 +168,34 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ value, onChange, placeholder, m
 
         recognition.onresult = (event: any) => {
             const transcript = event.results[0][0].transcript;
-            onChange(transcript); 
-        };
-        
-        recognition.onerror = (event: any) => {
-            console.error(event.error);
-            setIsListening(false);
+            if (transcript) {
+                onChange(transcript);
+                setStatus('success');
+                setTimeout(() => setStatus('idle'), 2000);
+            }
         };
 
-        recognition.start();
+        recognition.onerror = (event: any) => {
+            setIsListening(false);
+            setStatus('error');
+            alert("آواز کی شناخت میں مسئلہ پیش آیا۔");
+            setTimeout(() => setStatus('idle'), 3000);
+        };
+
+        try {
+            recognition.start();
+        } catch (e) {
+            setIsListening(false);
+        }
     };
 
-    const commonClasses = `w-full rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none text-right pr-4 pl-12 bg-white/80 backdrop-blur-sm ${className}`;
+    const getStatusClasses = () => {
+        if (status === 'success') return 'border-emerald-500 ring-2 ring-emerald-100';
+        if (status === 'error') return 'border-red-500 ring-2 ring-red-100';
+        return 'border-gray-200';
+    };
+
+    const commonClasses = `w-full rounded-xl border focus:ring-2 focus:ring-emerald-500 outline-none text-right pr-4 pl-12 bg-white/80 backdrop-blur-sm transition-all duration-300 ${getStatusClasses()} ${className}`;
 
     return (
         <div className="relative w-full group">
@@ -260,84 +203,233 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ value, onChange, placeholder, m
                 <textarea 
                     value={value} 
                     onChange={(e) => onChange(e.target.value)} 
-                    placeholder={placeholder}
-                    className={`${commonClasses} pt-3 min-h-[100px]`}
+                    placeholder={placeholder} 
+                    className={`${commonClasses} pt-3 min-h-[100px]`} 
                 />
             ) : (
                 <input 
-                    type={type}
+                    type={type} 
                     value={value} 
                     onChange={(e) => onChange(e.target.value)} 
-                    placeholder={placeholder}
-                    className={`${commonClasses} h-12`}
+                    placeholder={placeholder} 
+                    className={`${commonClasses} h-12`} 
                 />
             )}
             
             <button 
-                type="button"
-                onClick={handleListen}
-                className={`absolute left-2 bottom-2 p-2 rounded-full transition-all shadow-sm flex items-center justify-center ${isListening ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-200' : 'bg-gray-100 text-gray-500 hover:bg-emerald-100 hover:text-emerald-600'}`}
-                title="بول کر لکھیں"
+                type="button" 
+                onClick={handleListen} 
+                className={`absolute left-2 bottom-2 p-2.5 rounded-full transition-all shadow-md z-10 flex items-center justify-center ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-emerald-600 border border-emerald-100 hover:bg-emerald-50 active:scale-95'}`}
             >
-                {isListening ? <Mic size={18} className="animate-ping absolute inline-flex opacity-75" /> : null}
-                <Mic size={18} className="relative z-10" />
+                <Mic size={18} />
             </button>
+        </div>
+    );
+};
+
+// --- Tasbeeh Counter Section ---
+export const TasbeehCounterSection = ({ onBack }: SectionProps) => {
+  const [count, setCount] = useState(0);
+  const [goal, setGoal] = useState(33);
+  const [history, setHistory] = useState<{label: string, count: number, date: string}[]>(() => {
+    const saved = localStorage.getItem('tasbeeh_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [activeDhikr, setActiveDhikr] = useState('سبحان اللہ');
+
+  const dhikrs = ['سبحان اللہ', 'الحمد للہ', 'اللہ اکبر', 'استغفر اللہ', 'لا الہ الا اللہ', 'درود شریف'];
+
+  const handleIncrement = () => {
+    const newCount = count + 1;
+    setCount(newCount);
+    
+    // Haptic Feedback
+    if ('vibrate' in navigator) {
+      navigator.vibrate(50);
+    }
+
+    if (newCount === goal) {
+      if ('vibrate' in navigator) {
+        navigator.vibrate([100, 50, 100]);
+      }
+      alert(`${activeDhikr} کا ہدف مکمل ہو گیا!`);
+    }
+  };
+
+  const handleReset = () => {
+    if (count > 0) {
+      const entry = { label: activeDhikr, count, date: new Date().toLocaleString('ur-PK') };
+      const newHistory = [entry, ...history].slice(0, 10);
+      setHistory(newHistory);
+      localStorage.setItem('tasbeeh_history', JSON.stringify(newHistory));
+    }
+    setCount(0);
+  };
+
+  return (
+    <div className="max-w-md mx-auto animate-fade-in flex flex-col gap-6">
+      <BackButton onClick={onBack} />
+      
+      <div className="bg-white rounded-[2.5rem] shadow-2xl p-8 border border-gray-100 text-center relative overflow-hidden flex flex-col items-center">
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+        
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">تسبیح کاؤنٹر</h2>
+        
+        <select 
+          value={activeDhikr} 
+          onChange={(e) => { handleReset(); setActiveDhikr(e.target.value); }}
+          className="w-full p-3 rounded-2xl bg-emerald-50 border-none text-emerald-800 font-bold text-center mb-8 outline-none appearance-none shadow-inner"
+        >
+          {dhikrs.map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
+
+        {/* Counter Circle */}
+        <div 
+          onClick={handleIncrement}
+          className="relative w-64 h-64 rounded-full bg-gradient-to-br from-emerald-50 to-white shadow-2xl border-8 border-emerald-100 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all group overflow-hidden"
+        >
+          {/* Progress Ring */}
+          <svg className="absolute inset-0 w-full h-full -rotate-90">
+            <circle 
+              cx="128" cy="128" r="120" 
+              fill="none" 
+              stroke="#10b981" 
+              strokeWidth="8" 
+              strokeDasharray="754" 
+              strokeDashoffset={754 - (754 * Math.min(count, goal)) / goal}
+              className="transition-all duration-300 ease-out"
+            />
+          </svg>
+          
+          <div className="relative z-10 flex flex-col items-center">
+            <span className="text-6xl font-bold text-gray-800 tracking-tighter font-mono">{count}</span>
+            <span className="text-xs text-emerald-600 font-bold uppercase tracking-widest mt-2">TAP TO COUNT</span>
+          </div>
+          
+          <div className="absolute bottom-6 text-[10px] font-bold text-gray-400">ہدف: {goal}</div>
+        </div>
+
+        <div className="flex gap-4 w-full mt-10">
+          <button onClick={handleReset} className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
+            <RotateCcw size={18} /> ری سیٹ
+          </button>
+          <div className="flex-1 flex gap-2">
+            {[33, 100, 1000].map(val => (
+              <button key={val} onClick={() => { handleReset(); setGoal(val); }} className={`flex-1 py-4 rounded-2xl font-bold transition-all text-xs ${goal === val ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700'}`}>
+                {val}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {history.length > 0 && (
+        <div className="bg-white rounded-3xl shadow-lg p-6 border border-gray-100">
+           <div className="flex items-center gap-2 mb-4">
+              <History size={18} className="text-emerald-600" />
+              <h3 className="font-bold text-gray-800">حالیہ ریکارڈ</h3>
+           </div>
+           <div className="space-y-3">
+              {history.map((h, i) => (
+                <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="text-right">
+                    <p className="font-bold text-sm text-gray-800">{h.label}</p>
+                    <p className="text-[10px] text-gray-400">{h.date}</p>
+                  </div>
+                  <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold">{h.count}</span>
+                </div>
+              ))}
+           </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Horoscope Section (Improved) ---
+export const HoroscopeSection = ({ onBack }: SectionProps) => {
+    const [name, setName] = useState('');
+    const [dob, setDob] = useState('');
+    const [tob, setTob] = useState('');
+    const [pob, setPob] = useState('');
+    const [question, setQuestion] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState<string | null>(null);
+
+    const handleGenerate = async () => {
+        if (!name || !dob) return alert("براہ کرم نام اور تاریخ پیدائش درج کریں۔");
+        setLoading(true);
+        const prompt = `بطور ایک ماہر علم نجوم (Astrologer)، درج ذیل پیدائشی تفصیلات کی بنیاد پر زائچہ تیار کریں اور صارف کے سوال کا جواب دیں:
+        نام: ${name}
+        تاریخ پیدائش: ${dob}
+        وقتِ پیدائش: ${tob || "نامعلوم"}
+        مقامِ پیدائش: ${pob || "پاکستان"}
+        سوال: ${question || "عام زائچہ اور مستقبل کے حالات"}
+        براہ کرم اردو میں تفصیلی جواب فراہم کریں جس میں برج، ستارہ، لکی نمبر، اور مخصوص مشورے شامل ہوں۔`;
+
+        try {
+            const res = await generateSpiritualResponse(prompt);
+            setResult(res);
+        } catch (e) {
+            setResult("معذرت، زائچہ تیار کرنے میں مسئلہ پیش آیا۔");
+        }
+        setLoading(false);
+    };
+
+    return (
+        <div className="max-w-3xl mx-auto animate-fade-in">
+             <BackButton onClick={onBack} />
+             <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-orange-500 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-100 rounded-full blur-3xl opacity-20 -translate-y-10 translate-x-10"></div>
+                
+                <div className="flex items-center gap-3 mb-6 relative z-10">
+                    <div className="p-3 bg-orange-50 text-orange-600 rounded-xl shadow-inner"><Star size={28} /></div>
+                    <h2 className="text-2xl font-bold text-gray-800">زائچہ و نجوم</h2>
+                </div>
+
+                <div className="space-y-4 relative z-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-1.5 mr-1">آپ کا نام</label>
+                            <VoiceInput value={name} onChange={setName} placeholder="نام لکھیں..." />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-1.5 mr-1">تاریخ پیدائش</label>
+                            <input type="date" value={dob} onChange={e => setDob(e.target.value)} className="w-full h-12 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 outline-none px-4 bg-white/80" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-1.5 mr-1">وقت پیدائش (اگر معلوم ہو)</label>
+                            <input type="time" value={tob} onChange={e => setTob(e.target.value)} className="w-full h-12 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 outline-none px-4 bg-white/80" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-1.5 mr-1">مقامِ پیدائش</label>
+                            <VoiceInput value={pob} onChange={setPob} placeholder="شہر یا گاؤں..." />
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1.5 mr-1">کوئی مخصوص سوال؟</label>
+                        <VoiceInput value={question} onChange={setQuestion} placeholder="مثلاً: شادی، ملازمت، صحت..." multiline />
+                    </div>
+
+                    <button 
+                        onClick={handleGenerate} 
+                        disabled={loading || !name} 
+                        className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-bold shadow-lg transition-all flex items-center justify-center gap-3 active:scale-95 group"
+                    >
+                        {loading ? <Loader2 className="animate-spin" /> : <Sparkle size={20} className="group-hover:rotate-45 transition-transform" />} 
+                        <span>زائچہ تیار کریں</span>
+                    </button>
+                </div>
+                
+                <GenericResult loading={loading} result={result} title="نجومی تجزیہ" />
+             </div>
         </div>
     );
 };
 
 // --- Settings Section ---
 export const SettingsSection = ({ onBack }: SectionProps) => {
-    const [key, setKey] = useState('');
-    const [savedKey, setSavedKey] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [status, setStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
-
-    useEffect(() => {
-        const storedKey = localStorage.getItem('user_gemini_api_key');
-        if (storedKey) {
-            setSavedKey(storedKey);
-        }
-    }, []);
-
-    const handleSave = async () => {
-        setStatus('idle');
-        
-        // Basic format validation
-        if (!key.startsWith('AIzaSy') || key.length < 30) {
-            alert("غلط فارمیٹ: API Key عام طور پر 'AIzaSy' سے شروع ہوتی ہے۔");
-            setStatus('invalid');
-            return;
-        }
-
-        setIsLoading(true);
-        const isValid = await validateGeminiApiKey(key);
-        setIsLoading(false);
-
-        if (isValid) {
-            setStatus('valid');
-            // Small delay to show success before saving/reloading
-            setTimeout(() => {
-                saveApiKey(key);
-            }, 1000);
-        } else {
-            setStatus('invalid');
-            alert("یہ API Key کام نہیں کر رہی۔ براہ کرم چیک کریں یا نئی Key بنائیں۔");
-        }
-    };
-
-    const handleRemove = () => {
-        if(confirm("کیا آپ واقعی API Key ختم کرنا چاہتے ہیں؟")) {
-            removeApiKey();
-        }
-    };
-
-    // Mask the key for display: first 4 + asterisks + last 4
-    const getMaskedKey = (k: string) => {
-        if (!k || k.length < 10) return "**********";
-        return `${k.substring(0, 4)}••••••••••••••••••••${k.substring(k.length - 4)}`;
-    };
-
     return (
         <div className="max-w-2xl mx-auto animate-fade-in">
              <BackButton onClick={onBack} />
@@ -348,86 +440,15 @@ export const SettingsSection = ({ onBack }: SectionProps) => {
                 </div>
 
                 <div className="space-y-6">
-                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden">
-                        {/* Status Indicator Bar */}
-                        {status === 'valid' && <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500 animate-pulse"></div>}
-                        {status === 'invalid' && <div className="absolute top-0 left-0 w-full h-1 bg-red-500"></div>}
-
-                        <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2 text-lg">
-                            <div className="bg-emerald-100 p-1.5 rounded-lg"><Key size={18} className="text-emerald-600"/></div>
-                            Google Gemini API Key
-                        </h3>
-                        
-                        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-                            ایپ کو چلانے کے لیے اپنی ذاتی API Key استعمال کریں۔ یہ آپ کے براؤزر میں محفوظ رہے گی اور کہیں شیئر نہیں ہوگی۔
+                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm text-center">
+                        <p className="text-sm text-gray-500 leading-relaxed">
+                            ایپ کی تمام ترتیبات اب براہ راست کلاؤڈ کے ذریعے منظم کی جاتی ہیں۔ آپ کی پرائیویسی اور ڈیٹا کی حفاظت ہماری اولین ترجیح ہے۔
                         </p>
-
-                        {savedKey ? (
-                            <div className="flex flex-col gap-4">
-                                <div className="flex items-center justify-between bg-emerald-50 p-4 rounded-xl border border-emerald-100 shadow-sm">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-1">Current Key</span>
-                                        <code className="text-emerald-800 font-mono text-sm font-bold tracking-widest">{getMaskedKey(savedKey)}</code>
-                                    </div>
-                                    <span className="bg-emerald-200 text-emerald-800 text-[10px] px-2 py-1 rounded-full font-bold">Active</span>
-                                </div>
-                                <button 
-                                    onClick={handleRemove} 
-                                    className="w-full py-3 text-red-600 text-sm font-bold hover:bg-red-50 rounded-xl border border-red-100 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Trash2 size={16} /> محفوظ شدہ Key ختم کریں
-                                </button>
+                        <div className="mt-6 flex justify-center">
+                            <div className="flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
+                                <ShieldCheck size={18} className="text-emerald-600" />
+                                <span className="text-xs font-bold text-emerald-800">سسٹم محفوظ ہے</span>
                             </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="relative group">
-                                    <input 
-                                        type="text" 
-                                        value={key}
-                                        onChange={(e) => {
-                                            setKey(e.target.value);
-                                            if (status === 'invalid') setStatus('idle');
-                                        }}
-                                        placeholder="AIzaSy..."
-                                        className={`w-full p-4 pl-12 rounded-xl border-2 focus:ring-4 outline-none text-left font-mono text-sm transition-all ${status === 'invalid' ? 'border-red-300 focus:ring-red-100' : 'border-gray-200 focus:border-emerald-500 focus:ring-emerald-100'}`}
-                                        disabled={isLoading}
-                                    />
-                                    <Key className={`absolute left-4 top-4 transition-colors ${status === 'invalid' ? 'text-red-400' : 'text-gray-400 group-focus-within:text-emerald-500'}`} size={18} />
-                                    {status === 'valid' && <Check className="absolute right-4 top-4 text-emerald-500" size={20} />}
-                                    {status === 'invalid' && <AlertTriangle className="absolute right-4 top-4 text-red-500" size={20} />}
-                                </div>
-
-                                <button 
-                                    onClick={handleSave}
-                                    disabled={isLoading || !key}
-                                    className={`w-full py-3.5 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 text-white ${isLoading ? 'bg-gray-400 cursor-wait' : (status === 'valid' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-gray-800 hover:bg-black')}`}
-                                >
-                                    {isLoading ? (
-                                        <>
-                                            <Loader2 size={18} className="animate-spin" /> تصدیق ہو رہی ہے...
-                                        </>
-                                    ) : status === 'valid' ? (
-                                        <>
-                                            <Check size={18} /> تصدیق شدہ! محفوظ ہو رہا ہے
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ShieldCheck size={18} /> محفوظ کریں اور چلائیں
-                                        </>
-                                    )}
-                                </button>
-                                
-                                <p className="text-[10px] text-center text-gray-400">
-                                    "Save" دبانے پر سسٹم خودکار طور پر Key کی تصدیق کرے گا۔
-                                </p>
-                            </div>
-                        )}
-                        
-                        <div className="mt-6 pt-4 border-t border-gray-200 text-center bg-blue-50/50 -mx-6 -mb-6 p-4">
-                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs font-bold hover:underline inline-flex items-center gap-1 bg-white px-3 py-1.5 rounded-full shadow-sm border border-blue-100 hover:shadow-md transition-all">
-                                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                                نئی Google API Key حاصل کریں <ArrowRight size={12} className="rotate-180" />
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -436,180 +457,29 @@ export const SettingsSection = ({ onBack }: SectionProps) => {
     );
 };
 
-// --- Calendar Components (Top Level) ---
-
+// --- TodayPanel Component ---
 const TodayPanel = () => {
     const today = new Date();
     const gDay = today.getDate();
     const gMonth = urduMonths[today.getMonth()];
     const gYear = today.getFullYear();
-    
     const hDay = safeIntlFormat(today, 'ur-PK', { calendar: 'islamic-umalqura', day: 'numeric' });
     const hMonth = getHijriMonthUrdu(today);
     const hYear = safeIntlFormat(today, 'en-u-ca-islamic-umalqura', { year: 'numeric' });
-
     const pDay = safeIntlFormat(today, 'hi-IN-u-ca-indian', { calendar: 'indian', day: 'numeric' });
     const pMonth = getHindiMonthUrdu(today);
     const bYear = getBikramiYear(today);
-    const nYear = getNanakShahiYear(today);
 
     return (
-        <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl p-6 border border-gray-200 shadow-md mb-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-100 rounded-full blur-2xl opacity-50 -translate-y-4 translate-x-4"></div>
-            <h3 className="text-center font-bold text-gray-400 text-xs mb-4 uppercase tracking-widest border-b border-gray-100 pb-2">آج کی تاریخ (Today's Date)</h3>
-            <div className="space-y-4 text-center sm:text-right">
-                    <div>
-                        <span className="text-lg text-gray-800 font-medium leading-loose">
-                        آج انگریزی ماہ <span className="font-bold text-blue-700">{gMonth}</span> کی <span className="font-bold text-blue-700">{gDay}</span> تاریخ اور سال <span className="font-bold text-blue-700">{gYear}</span> عیسوی ہے۔
-                        </span>
-                    </div>
-                    <div className="w-full h-px bg-gray-100"></div>
-                    <div>
-                        <span className="text-lg text-gray-800 font-medium leading-loose">
-                            آج اسلامی ماہ <span className="font-bold text-emerald-700">{hMonth}</span> کی <span className="font-bold text-emerald-700">{hDay}</span> تاریخ اور سال <span className="font-bold text-emerald-700">{hYear}</span> ہجری ہے۔
-                        </span>
-                    </div>
-                    <div className="w-full h-px bg-gray-100"></div>
-                    <div>
-                        <span className="text-lg text-gray-800 font-medium leading-loose">
-                            پنجابی (دیسی) ماہ <span className="font-bold text-orange-700">{pMonth}</span> کی <span className="font-bold text-orange-700">{pDay}</span> تاریخ، سال <span className="font-bold text-orange-700">{bYear}</span> بکرمی سمت (<span className="font-bold text-orange-700">{nYear}</span> نانک شاہی) ہے۔
-                        </span>
-                    </div>
+        <div className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm mb-6">
+            <h3 className="text-center font-bold text-gray-400 text-xs mb-4 uppercase tracking-widest">آج کی تاریخ</h3>
+            <div className="space-y-4 text-right">
+                <p className="text-lg">آج انگریزی ماہ <span className="font-bold text-blue-700">{gMonth}</span> کی <span className="font-bold text-blue-700">{gDay}</span> تاریخ، سال <span className="font-bold text-blue-700">{gYear}</span> ہے۔</p>
+                <div className="h-px bg-gray-100"></div>
+                <p className="text-lg">آج اسلامی ماہ <span className="font-bold text-emerald-700">{hMonth}</span> کی <span className="font-bold text-emerald-700">{hDay}</span> تاریخ، سال <span className="font-bold text-emerald-700">{hYear}</span> ہے۔</p>
+                <div className="h-px bg-gray-100"></div>
+                <p className="text-lg">دیسی ماہ <span className="font-bold text-orange-700">{pMonth}</span> کی <span className="font-bold text-orange-700">{pDay}</span> تاریخ، سال <span className="font-bold text-orange-700">{bYear}</span> بکرمی ہے۔</p>
             </div>
-        </div>
-    );
-};
-
-// --- Prayer Card Component (Top Level) ---
-
-const PrayerCard = ({ 
-    title, 
-    time, 
-    icon: Icon, 
-    color, 
-    isActive, 
-    isForbidden = false, 
-    prayerKey,
-    customOffset = 0,
-    isAlarm = false,
-    onOffsetChange,
-    onAlarmToggle
-}: any) => {
-    const [showAdjust, setShowAdjust] = useState(false);
-    const [manualInput, setManualInput] = useState("");
-    
-    // Calculate the display time based on offset
-    const displayTime = adjustTimeStr(time, customOffset);
-
-    // Keep manual input in sync with display time when we open edit mode
-    useEffect(() => {
-            if (showAdjust) setManualInput(displayTime);
-    }, [showAdjust, displayTime]);
-
-    const handleManualBlur = () => {
-        const newMins = parseTimeToMinutes(manualInput);
-        const baseMins = parseTimeToMinutes(time);
-        
-        if (newMins > 0 && baseMins > 0) {
-            let diff = newMins - baseMins;
-            if (diff < -720) diff += 1440;
-            if (diff > 720) diff -= 1440;
-            
-            onOffsetChange(prayerKey, diff - customOffset);
-        } else {
-            setManualInput(displayTime);
-        }
-    };
-
-    const resetOffset = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        onOffsetChange(prayerKey, -customOffset);
-    };
-
-    return (
-        <div className={`relative overflow-visible rounded-2xl p-4 flex flex-col items-center justify-center gap-2 border transition-all duration-300 ${isActive ? `bg-gradient-to-br ${color} text-white shadow-lg scale-105 ring-2 ring-offset-2 ring-emerald-100` : 'bg-white border-gray-100 text-gray-700 hover:shadow-md'}`}>
-                {isActive && <div className="absolute inset-0 bg-white/20 animate-pulse pointer-events-none rounded-2xl"></div>}
-                
-                {/* Alarm Button */}
-                <div className="absolute top-2 left-2 z-20">
-                    <button 
-                    onClick={(e) => { e.stopPropagation(); onAlarmToggle(prayerKey); }}
-                    className={`p-1.5 rounded-full transition-colors backdrop-blur-sm ${isActive ? 'bg-white/20 hover:bg-white/30 text-white' : (isAlarm ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400')}`}
-                    title="Alarm"
-                    >
-                        {isAlarm ? <Bell size={14} className="fill-current" /> : <BellOff size={14} />}
-                    </button>
-                </div>
-
-                {/* Settings Button */}
-                {!isForbidden && (
-                    <div className="absolute top-2 right-2 z-20">
-                        <button 
-                        onClick={(e) => { e.stopPropagation(); setShowAdjust(!showAdjust); }}
-                        className={`p-1.5 rounded-full transition-colors backdrop-blur-sm ${isActive ? 'bg-white/20 hover:bg-white/30 text-white' : (showAdjust ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400')}`}
-                        title="Adjust Time"
-                        >
-                            <Settings size={14} />
-                        </button>
-                    </div>
-                )}
-
-                {/* Main Content */}
-                <div className={`p-2 rounded-full ${isActive ? 'bg-white/20' : 'bg-gray-50'}`}>
-                <Icon size={20} className={isActive ? 'text-white' : 'text-gray-500'} />
-                </div>
-                <span className="text-sm font-bold opacity-90">{title}</span>
-                
-                {/* Time Display or Adjustment Controls */}
-                {showAdjust ? (
-                    <div className="flex items-center justify-between bg-white shadow-xl p-2 rounded-xl absolute bottom-[-16px] left-1/2 transform -translate-x-1/2 z-30 w-[160px] border border-gray-200" dir="ltr" onClick={(e) => e.stopPropagation()}>
-                        <button 
-                        onClick={() => onOffsetChange(prayerKey, -1)} 
-                        className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-lg hover:bg-red-100 active:scale-95 transition-all shadow-sm"
-                        >
-                        <Minus size={18} strokeWidth={2.5} />
-                        </button>
-                        
-                        <input 
-                        type="text" 
-                        value={manualInput}
-                        onChange={(e) => setManualInput(e.target.value)}
-                        onBlur={handleManualBlur}
-                        onKeyDown={(e) => {
-                            if(e.key === 'Enter') {
-                                handleManualBlur();
-                                e.currentTarget.blur();
-                            }
-                        }}
-                        className="flex-1 w-full text-center text-sm font-bold text-gray-800 focus:ring-2 focus:ring-emerald-500 outline-none bg-gray-50 rounded mx-1 py-1"
-                        />
-                        
-                        <button 
-                        onClick={() => onOffsetChange(prayerKey, 1)} 
-                        className="w-8 h-8 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 active:scale-95 transition-all shadow-sm"
-                        >
-                        <Plus size={18} strokeWidth={2.5} />
-                        </button>
-                        
-                        {customOffset !== 0 && (
-                            <button 
-                            onClick={resetOffset}
-                            className="absolute -top-3 -right-3 bg-gray-700 text-white rounded-full p-1.5 shadow-md hover:bg-gray-900 border-2 border-white"
-                            title="Reset Time"
-                            >
-                                <RotateCcw size={12} />
-                            </button>
-                        )}
-                    </div>
-                ) : (
-                <span className="text-xl font-bold tracking-wider mt-1" dir="ltr">{displayTime || '--:--'}</span>
-                )}
-
-                {isForbidden && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold absolute top-2 right-2">مکروہ</span>}
-                
-                {isAlarm && !showAdjust && (
-                <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : 'bg-emerald-500'}`}></div>
-                )}
         </div>
     );
 };
@@ -617,223 +487,40 @@ const PrayerCard = ({
 // --- Calendar Section ---
 export const CalendarSection = ({ onBack }: SectionProps) => {
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [calendarType, setCalendarType] = useState<'gregorian' | 'hijri' | 'punjabi'>('gregorian');
-    const [yearInput, setYearInput] = useState(currentDate.getFullYear().toString());
 
-    useEffect(() => {
-        const timer = setInterval(() => {
-            const now = new Date();
-            if (now.getDate() !== currentDate.getDate()) {
-                setCurrentDate(now);
-                setYearInput(now.getFullYear().toString());
-            }
-        }, 60000);
-        return () => clearInterval(timer);
-    }, [currentDate]);
-
-    useEffect(() => {
-        setYearInput(currentDate.getFullYear().toString());
-    }, [currentDate]);
-
-    const goToToday = () => setCurrentDate(new Date());
     const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
     const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-    
-    const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const valStr = e.target.value;
-        setYearInput(valStr);
-        const val = parseInt(valStr);
-        if (!isNaN(val) && val > 0 && val < 9999) {
-            setCurrentDate(new Date(val, currentDate.getMonth(), 1));
-        }
-    };
-
-    const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const val = parseInt(e.target.value);
-        setCurrentDate(new Date(currentDate.getFullYear(), val, 1));
-    };
-
-    const getHeaderDate = () => {
-        if (calendarType === 'hijri') {
-            const month = getHijriMonthUrdu(currentDate);
-            const year = safeIntlFormat(currentDate, 'en-u-ca-islamic-umalqura', { year: 'numeric' });
-            return `${month} ${year}`;
-        } else if (calendarType === 'punjabi') {
-            const urduMonth = getHindiMonthUrdu(currentDate);
-            const year = getBikramiYear(currentDate);
-            return `${urduMonth} ${year} بکرمی`;
-        }
-        const urduMonth = getGregorianMonthUrdu(currentDate);
-        const year = currentDate.getFullYear();
-        return `${urduMonth} ${year}`;
-    };
 
     const generateGrid = () => {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const startDayIndex = firstDay.getDay(); 
-        const daysInMonth = lastDay.getDate();
-
+        const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
         const days = [];
-        for (let i = 0; i < startDayIndex; i++) days.push(null);
-        for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+        for (let i = 0; i < firstDay.getDay(); i++) days.push(null);
+        for (let i = 1; i <= lastDay.getDate(); i++) days.push(new Date(currentDate.getFullYear(), currentDate.getMonth(), i));
         return days;
     };
 
-    const days = generateGrid();
-    const weekDays = ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ'];
-
-    const themes = {
-        gregorian: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800', active: 'bg-blue-600', icon: 'text-blue-600' },
-        hijri: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', active: 'bg-emerald-600', icon: 'text-emerald-600' },
-        punjabi: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800', active: 'bg-orange-600', icon: 'text-orange-600' },
-    };
-    const theme = themes[calendarType];
-
-    const currentMonthEvents = SPECIAL_DAYS_DATA.filter(
-        (e) => e.m === currentDate.getMonth() + 1
-    ).sort((a, b) => a.d - b.d);
-
     return (
-        <div className="max-w-5xl mx-auto animate-fade-in">
+        <div className="max-w-4xl mx-auto animate-fade-in">
             <BackButton onClick={onBack} />
-            
             <TodayPanel />
-
-            <div className={`bg-white rounded-3xl shadow-xl border ${theme.border} overflow-hidden w-full`}>
-                <div className={`${theme.bg} p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4 border-b ${theme.border}`}>
-                    <div className="flex items-center gap-4">
-                        <div className={`p-3 bg-white rounded-full shadow-sm ${theme.icon}`}>
-                            <CalendarDays size={24} />
-                        </div>
-                        <div>
-                            <h2 className={`text-2xl font-bold ${theme.text}`}>{getHeaderDate()}</h2>
-                            <p className="text-xs opacity-70 font-bold text-gray-600">
-                                {calendarType === 'gregorian' ? 'عیسوی کیلنڈر' : calendarType === 'hijri' ? 'اسلامی/ہجری کیلنڈر' : 'پنجابی/بکرمی کیلنڈر'}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/50 p-1.5 rounded-xl">
-                        <button onClick={() => setCalendarType('gregorian')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${calendarType === 'gregorian' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-blue-100 text-blue-800'}`}>عیسوی</button>
-                        <button onClick={() => setCalendarType('hijri')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${calendarType === 'hijri' ? 'bg-emerald-600 text-white shadow-md' : 'hover:bg-emerald-100 text-emerald-800'}`}>اسلامی</button>
-                        <button onClick={() => setCalendarType('punjabi')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${calendarType === 'punjabi' ? 'bg-orange-600 text-white shadow-md' : 'hover:bg-orange-100 text-orange-800'}`}>پنجابی (Desi)</button>
-                    </div>
+            <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-200">
+                <div className="bg-emerald-50 p-6 flex justify-between items-center border-b">
+                    <button onClick={prevMonth} className="p-2 hover:bg-white rounded-full"><ChevronRight /></button>
+                    <h2 className="text-2xl font-bold text-emerald-900">{getGregorianMonthUrdu(currentDate)} {currentDate.getFullYear()}</h2>
+                    <button onClick={nextMonth} className="p-2 hover:bg-white rounded-full"><ChevronLeft /></button>
                 </div>
-                
-                <div className="relative flex flex-col sm:flex-row justify-center items-center p-4 bg-gray-50 border-b border-gray-100 gap-4">
-                    <div className="flex items-center gap-1 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-200 z-10">
-                        <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-xl text-gray-600 transition-colors" aria-label="Previous Month">
-                            <ChevronRight size={20} />
-                        </button>
-                        <div className="h-5 w-px bg-gray-200 mx-1"></div>
-                        <div className="flex items-center">
-                            <select 
-                                value={currentDate.getMonth()} 
-                                onChange={handleMonthChange}
-                                className="bg-transparent font-bold text-gray-700 text-sm py-1 px-2 cursor-pointer outline-none text-center hover:text-emerald-700 transition-colors appearance-none"
-                            >
-                                {urduMonths.map((m, i) => (
-                                    <option key={i} value={i}>{m}</option>
-                                ))}
-                            </select>
-                            <input 
-                                type="number" 
-                                value={yearInput} 
-                                onChange={handleYearChange}
-                                className="w-16 bg-transparent font-bold text-gray-700 text-sm py-1 outline-none text-center hover:text-emerald-700 transition-colors"
-                            />
-                        </div>
-                        <div className="h-5 w-px bg-gray-200 mx-1"></div>
-                        <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-xl text-gray-600 transition-colors" aria-label="Next Month">
-                            <ChevronLeft size={20} />
-                        </button>
+                <div className="p-4">
+                    <div className="grid grid-cols-7 text-center font-bold text-gray-500 mb-2">
+                        {['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ'].map(d => <div key={d} className="py-2 text-xs">{d}</div>)}
                     </div>
-                    <button onClick={goToToday} className="sm:absolute sm:left-4 px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-100 transition-colors shadow-sm">
-                        آج (Today)
-                    </button>
-                </div>
-
-                <div className="p-2 md:p-4 w-full overflow-hidden">
-                    <div className="grid grid-cols-7 text-center mb-2">
-                        {weekDays.map((d, i) => (
-                            <div key={i} className={`text-[10px] sm:text-xs md:text-sm font-bold ${i === 5 ? 'text-emerald-600' : 'text-gray-500'} py-2`}>{d}</div>
+                    <div className="grid grid-cols-7 gap-1">
+                        {generateGrid().map((date, idx) => (
+                            <div key={idx} className={`aspect-square flex items-center justify-center rounded-xl border ${date?.toDateString() === new Date().toDateString() ? 'bg-emerald-600 text-white border-transparent' : 'bg-white border-gray-100 text-gray-700'}`}>
+                                <span className="text-lg font-bold">{date ? date.getDate() : ''}</span>
+                            </div>
                         ))}
                     </div>
-                    <div className="grid grid-cols-7 gap-1 md:gap-2 auto-rows-fr">
-                        {days.map((date, idx) => {
-                            if (!date) return <div key={idx} className="aspect-[4/5] sm:aspect-square"></div>;
-                            const isToday = date.toDateString() === new Date().toDateString();
-                            
-                            const gregDate = date.getDate().toString();
-                            const gregMonth = getGregorianMonthUrdu(date);
-                            const hijriDateNum = safeIntlFormat(date, 'ur-PK', { calendar: 'islamic-umalqura', day: 'numeric' });
-                            const hijriMonth = getHijriMonthUrdu(date);
-                            const hindiDateNum = safeIntlFormat(date, 'hi-IN-u-ca-indian', { calendar: 'indian', day: 'numeric' });
-                            const hindiMonth = getHindiMonthUrdu(date);
-
-                            let mainDisplay = '', subDisplay1 = '', subDisplay2 = '';
-                            if (calendarType === 'gregorian') {
-                                mainDisplay = gregDate;
-                                subDisplay1 = `${hijriMonth} ${hijriDateNum}`;
-                                subDisplay2 = `${hindiMonth} ${hindiDateNum}`;
-                            } else if (calendarType === 'hijri') {
-                                mainDisplay = hijriDateNum;
-                                subDisplay1 = `${gregMonth} ${gregDate}`;
-                                subDisplay2 = `${hindiMonth} ${hindiDateNum}`;
-                            } else { 
-                                mainDisplay = hindiDateNum;
-                                subDisplay1 = `${gregMonth} ${gregDate}`;
-                                subDisplay2 = `${hijriMonth} ${hijriDateNum}`;
-                            }
-
-                            const event = SPECIAL_DAYS_DATA.find(e => e.d === date.getDate() && e.m === date.getMonth() + 1);
-
-                            return (
-                                <div key={idx} className={`aspect-[4/5] sm:aspect-square rounded-xl md:rounded-2xl flex flex-col items-center justify-center relative transition-all cursor-default border p-0.5 ${isToday ? `${theme.active} text-white shadow-lg scale-105 z-10 border-transparent` : `bg-white hover:bg-gray-50 ${theme.border} text-gray-700`}`}>
-                                    <span className={`text-base sm:text-xl md:text-2xl font-bold leading-none mb-1 ${isToday ? 'text-white' : theme.text}`}>{mainDisplay}</span>
-                                    <div className="flex flex-col items-center leading-tight gap-0.5 w-full">
-                                        <span className={`text-[6px] sm:text-[8px] md:text-[9px] font-medium truncate w-full text-center ${isToday ? 'text-white/90' : 'text-gray-500'}`}>{subDisplay1}</span>
-                                        <span className={`text-[6px] sm:text-[8px] md:text-[9px] font-medium truncate w-full text-center ${isToday ? 'text-white/90' : 'text-gray-400'}`}>{subDisplay2}</span>
-                                    </div>
-                                    {event && !isToday && (
-                                        <div className="absolute top-1 right-1 w-1.5 h-1.5 md:w-2 md:h-2 bg-red-500 rounded-full animate-pulse"></div>
-                                    )}
-                                     {event && isToday && (
-                                        <div className="absolute top-1 right-1 w-1.5 h-1.5 md:w-2 md:h-2 bg-yellow-300 rounded-full animate-pulse shadow-sm"></div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-
-            <div className="mt-6 bg-white p-6 rounded-3xl border border-blue-100 shadow-lg relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/10 rounded-full blur-2xl transform translate-x-10 -translate-y-10"></div>
-                <h3 className="font-bold text-xl text-blue-900 mb-4 flex items-center gap-2 relative z-10">
-                    <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                         <Sparkles size={20} className="text-yellow-500 fill-yellow-500" />
-                    </div>
-                    اس ماہ کے خاص ایام (Special Days)
-                </h3>
-                <div className="space-y-2 relative z-10">
-                    {currentMonthEvents.length > 0 ? (
-                        currentMonthEvents.map((ev, i) => (
-                            <div key={i} className="flex gap-4 items-center p-3 bg-gradient-to-r from-blue-50 to-transparent rounded-2xl border border-blue-50 hover:border-blue-200 transition-colors">
-                                <div className="bg-white text-blue-800 font-bold w-12 h-12 flex items-center justify-center rounded-xl shadow-sm text-lg border border-blue-100 shrink-0">
-                                    {ev.d}
-                                </div>
-                                <span className="text-base font-medium text-gray-800">{ev.label}</span>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="text-center py-8 text-gray-400 flex flex-col items-center">
-                            <Calendar size={32} className="mb-2 opacity-20" />
-                            <p>اس ماہ کوئی خاص عالمی دن درج نہیں ہے۔</p>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
@@ -842,308 +529,229 @@ export const CalendarSection = ({ onBack }: SectionProps) => {
 
 // --- Prayer Times Section ---
 export const PrayerTimesSection = ({ onBack }: SectionProps) => {
-    const [city, setCity] = useState('');
-    const [locationInput, setLocationInput] = useState('Lahore, Pakistan');
-    const [isEditingLocation, setIsEditingLocation] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [isAutoLocating, setIsAutoLocating] = useState(true);
-    const [jurist, setJurist] = useState<'hanafi' | 'shafi'>('hanafi');
     const [prayerData, setPrayerData] = useState<any>(null);
-    const [currentDate, setCurrentDate] = useState(new Date());
-    
-    // Customization State
-    const [customOffsets, setCustomOffsets] = useState<Record<string, number>>({});
-    const [activeAlarms, setActiveAlarms] = useState<Record<string, boolean>>({});
+    const [loading, setLoading] = useState(false);
+    const [location, setLocation] = useState<{lat: number, lon: number} | null>(null);
+    const [locationName, setLocationName] = useState('لاہور، پاکستان');
+    const [currentTime, setCurrentTime] = useState(new Date());
+    const [adjustments, setAdjustments] = useState<Record<string, number>>(() => {
+        const saved = localStorage.getItem('prayer_adjustments');
+        return saved ? JSON.parse(saved) : {};
+    });
+    const [nextPrayer, setNextPrayer] = useState<{name: string, time: string, diff: string, id: string} | null>(null);
+    const [isAlertEnabled, setIsAlertEnabled] = useState(() => {
+        return localStorage.getItem('prayer_alerts_enabled') === 'true';
+    });
+    const lastAlertedPrayerRef = useRef<string | null>(null);
 
-    // Load settings from local storage
-    useEffect(() => {
-        const savedOffsets = localStorage.getItem('prayer_offsets');
-        if (savedOffsets) setCustomOffsets(JSON.parse(savedOffsets));
-        
-        const savedAlarms = localStorage.getItem('prayer_alarms');
-        if (savedAlarms) setActiveAlarms(JSON.parse(savedAlarms));
-    }, []);
-
-    // Ensure date stays fresh
     useEffect(() => {
         const timer = setInterval(() => {
             const now = new Date();
-            if (now.getDate() !== currentDate.getDate()) {
-                setCurrentDate(now);
-            }
-        }, 60000);
+            setCurrentTime(now);
+            checkPrayerAlert(now);
+        }, 1000);
         return () => clearInterval(timer);
-    }, [currentDate]);
+    }, [prayerData, adjustments, isAlertEnabled]);
 
-    const changeOffset = (key: string, delta: number) => {
-        const newOffsets = { ...customOffsets, [key]: (customOffsets[key] || 0) + delta };
-        setCustomOffsets(newOffsets);
-        localStorage.setItem('prayer_offsets', JSON.stringify(newOffsets));
-    };
-
-    const toggleAlarm = (key: string) => {
-        const newAlarms = { ...activeAlarms, [key]: !activeAlarms[key] };
-        setActiveAlarms(newAlarms);
-        localStorage.setItem('prayer_alarms', JSON.stringify(newAlarms));
-    };
-
-    // Initial load
     useEffect(() => {
         if (navigator.geolocation) {
-            setIsAutoLocating(true);
             navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const { latitude, longitude } = position.coords;
-                    fetchPrayerTimes(undefined, { lat: latitude, long: longitude });
+                (pos) => {
+                    setLocation({lat: pos.coords.latitude, lon: pos.coords.longitude});
                 },
-                (error) => {
-                    console.error("Geolocation denied or error:", error);
-                    setIsAutoLocating(false);
-                    fetchPrayerTimes('Lahore, Pakistan');
-                }
+                (err) => {
+                    fetchTimes();
+                },
+                { timeout: 8000 }
             );
         } else {
-            setIsAutoLocating(false);
-            fetchPrayerTimes('Lahore, Pakistan');
+            fetchTimes();
         }
     }, []);
 
-    // Refetch if jurist method changes AND we already have data
-    useEffect(() => {
-        if (prayerData) {
-            handleManualSearch();
-        }
-    }, [jurist]);
+    const checkPrayerAlert = (now: Date) => {
+        if (!isAlertEnabled || !prayerData) return;
 
-    const fetchPrayerTimes = async (cityName?: string, coords?: { lat: number, long: number }) => {
+        const prayers = [
+            { id: 'fajr', urdu: 'فجر' },
+            { id: 'dhuhr', urdu: 'ظہر' },
+            { id: 'asr', urdu: 'عصر' },
+            { id: 'maghrib', urdu: 'مغرب' },
+            { id: 'isha', urdu: 'عشاء' }
+        ];
+
+        prayers.forEach(p => {
+            const timeStr = getAdjustedTime(p.id, prayerData[p.id]);
+            const [time, period] = timeStr.split(' ');
+            let [h, m] = time.split(':').map(Number);
+            if (period === 'PM' && h !== 12) h += 12;
+            if (period === 'AM' && h === 12) h = 0;
+
+            const nowH = now.getHours();
+            const nowM = now.getMinutes();
+
+            if (nowH === h && nowM === m && lastAlertedPrayerRef.current !== p.id) {
+                lastAlertedPrayerRef.current = p.id;
+                triggerAlert(p.urdu);
+            }
+        });
+    };
+
+    const triggerAlert = (prayerName: string) => {
+        if (Notification.permission === "granted") {
+            new Notification(`نماز کا وقت: ${prayerName}`, {
+                body: `اب ${prayerName} کا وقت شروع ہو چکا ہے۔`,
+                icon: "https://cdn-icons-png.flaticon.com/512/2618/2618254.png"
+            });
+        }
+        const utterance = new SpeechSynthesisUtterance(`توجہ فرمائیں، ${prayerName} کا وقت ہو گیا ہے۔`);
+        utterance.lang = 'ur-PK';
+        window.speechSynthesis.speak(utterance);
+    };
+
+    const toggleAlerts = () => {
+        if (!isAlertEnabled) {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    setIsAlertEnabled(true);
+                    localStorage.setItem('prayer_alerts_enabled', 'true');
+                } else {
+                    alert("الرٹ کے لیے نوٹیفیکیشن کی اجازت ضروری ہے۔");
+                }
+            });
+        } else {
+            setIsAlertEnabled(false);
+            localStorage.setItem('prayer_alerts_enabled', 'false');
+        }
+    };
+
+    const fetchTimes = async () => {
         setLoading(true);
-        setPrayerData(null);
-        const dateStr = new Date().toLocaleDateString('en-US', { dateStyle: 'full' });
-        
-        let locationStr = cityName || locationInput;
-        if (coords) locationStr = `Lat: ${coords.lat}, Long: ${coords.long}`;
+        const locPrompt = location ? `for coordinates ${location.lat}, ${location.lon}` : `for Lahore, Pakistan`;
+        const prompt = `Provide today's Islamic prayer times (Hanafi/Sunni) ${locPrompt} in JSON format. Return ONLY the JSON object. { "city": "City Name in Urdu", "fajr": "HH:MM AM/PM", "sunrise": "HH:MM AM/PM", "dhuhr": "HH:MM AM/PM", "asr": "HH:MM AM/PM", "maghrib": "HH:MM AM/PM", "isha": "HH:MM AM/PM", "sunset": "HH:MM AM/PM" }`;
 
-        const prompt = `
-        Calculate precise prayer times.
-        Location: ${locationStr}
-        Date: ${dateStr}
-        Asr Calculation Method: ${jurist === 'hanafi' ? 'Hanafi (Later time)' : 'Standard/Shafi (Earlier time)'}.
-        
-        Return the result in strictly valid JSON format. Do not use Markdown. 
-        Structure:
-        {
-          "locationName": "City Name, Country",
-          "islamicDate": "DD Month YYYY",
-          "fajr": "HH:MM AM",
-          "sunrise": "HH:MM AM",
-          "dhuhr": "HH:MM PM",
-          "asr": "HH:MM PM",
-          "sunset": "HH:MM PM",
-          "maghrib": "HH:MM PM",
-          "isha": "HH:MM PM",
-          "ishraq": "HH:MM AM",
-          "chasht": "HH:MM AM",
-          "zawal_start": "HH:MM AM/PM",
-          "tahajjud": "HH:MM AM"
-        }
-        `;
-        
         try {
             const res = await generateSpiritualResponse(prompt);
-            const cleanJson = res.replace(/```json/g, '').replace(/```/g, '').trim();
-            const parsed = JSON.parse(cleanJson);
-            setPrayerData(parsed);
-            if(parsed.locationName) setCity(parsed.locationName);
-        } catch (e) {
-            console.error("Failed to parse prayer JSON", e);
-            setPrayerData({ error: true });
-        } finally {
-            setLoading(false);
-            setIsAutoLocating(false);
-            setIsEditingLocation(false);
+            const jsonStart = res.indexOf('{');
+            const jsonEnd = res.lastIndexOf('}');
+            if (jsonStart !== -1 && jsonEnd !== -1) {
+                const jsonStr = res.substring(jsonStart, jsonEnd + 1);
+                const json = JSON.parse(jsonStr);
+                setPrayerData(json);
+                if (json.city) setLocationName(json.city);
+            }
+        } catch (e) { }
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        if (location) fetchTimes();
+    }, [location]);
+
+    const getAdjustedTime = (key: string, baseTime: string) => {
+        if (!baseTime) return '--:--';
+        const offset = adjustments[key] || 0;
+        if (offset === 0) return baseTime;
+        try {
+            const [time, period] = baseTime.split(' ');
+            let [h, m] = time.split(':').map(Number);
+            if (period === 'PM' && h !== 12) h += 12;
+            if (period === 'AM' && h === 12) h = 0;
+            const date = new Date();
+            date.setHours(h, m + offset, 0);
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        } catch (e) { return baseTime; }
+    };
+
+    useEffect(() => {
+        if (!prayerData) return;
+        const prayers = [{ id: 'fajr', urdu: 'فجر' }, { id: 'dhuhr', urdu: 'ظہر' }, { id: 'asr', urdu: 'عصر' }, { id: 'maghrib', urdu: 'مغرب' }, { id: 'isha', urdu: 'عشاء' }];
+        const now = new Date();
+        let closest = null;
+        let minDiff = Infinity;
+        prayers.forEach(p => {
+            const timeStr = getAdjustedTime(p.id, prayerData[p.id]);
+            const [time, period] = timeStr.split(' ');
+            let [h, m] = time.split(':').map(Number);
+            if (period === 'PM' && h !== 12) h += 12;
+            if (period === 'AM' && h === 12) h = 0;
+            const pDate = new Date();
+            pDate.setHours(h, m, 0);
+            if (pDate < now) pDate.setDate(pDate.getDate() + 1);
+            const diff = pDate.getTime() - now.getTime();
+            if (diff < minDiff) {
+                minDiff = diff;
+                closest = { name: p.urdu, time: timeStr, diffMs: diff, id: p.id };
+            }
+        });
+        if (closest) {
+            const h = Math.floor(closest.diffMs / 3600000);
+            const m = Math.floor((closest.diffMs % 3600000) / 60000);
+            const s = Math.floor((closest.diffMs % 60000) / 1000);
+            setNextPrayer({ name: closest.name, time: closest.time, id: closest.id, diff: `${h} گھنٹے، ${m} منٹ، ${s} سیکنڈ` });
         }
-    };
+    }, [prayerData, currentTime, adjustments]);
 
-    const handleManualSearch = () => {
-        fetchPrayerTimes(locationInput);
+    const PrayerRow = ({ id, urdu, baseTime, icon: Icon, isForbidden = false, color }: any) => {
+        const adjusted = getAdjustedTime(id, baseTime);
+        const isActive = nextPrayer?.id === id;
+        return (
+            <div className={`p-4 rounded-2xl border flex items-center justify-between transition-all group ${isActive ? 'bg-emerald-50 border-emerald-400 shadow-md ring-2 ring-emerald-100 scale-[1.02]' : 'bg-white border-gray-100'}`}>
+                <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-xl ${color} text-white shadow-sm`}>
+                        <Icon size={24} />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-gray-800 text-lg">{urdu}</span>
+                            {isForbidden && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">ممنوعہ</span>}
+                        </div>
+                        <span className="text-2xl font-bold text-gray-900 font-mono tracking-tighter" dir="ltr">{adjusted}</span>
+                    </div>
+                </div>
+                <div className="flex flex-col gap-1 items-end">
+                    <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => { const newAdj = { ...adjustments, [id]: (adjustments[id] || 0) - 1 }; setAdjustments(newAdj); localStorage.setItem('prayer_adjustments', JSON.stringify(newAdj)); }} className="p-1 hover:text-emerald-600"><Minus size={14}/></button>
+                        <span className="px-2 text-[10px] font-bold text-gray-400">{(adjustments[id] || 0) > 0 ? `+${adjustments[id]}` : (adjustments[id] || 0)}</span>
+                        <button onClick={() => { const newAdj = { ...adjustments, [id]: (adjustments[id] || 0) + 1 }; setAdjustments(newAdj); localStorage.setItem('prayer_adjustments', JSON.stringify(newAdj)); }} className="p-1 hover:text-emerald-600"><Plus size={14}/></button>
+                    </div>
+                </div>
+            </div>
+        );
     };
-
-    const hijriDate = safeIntlFormat(currentDate, 'ur-PK', { calendar: 'islamic-umalqura', day: 'numeric', month: 'long', year: 'numeric' });
 
     return (
-        <div className="max-w-4xl mx-auto animate-fade-in pb-10">
+        <div className="max-w-4xl mx-auto animate-fade-in space-y-6">
             <BackButton onClick={onBack} />
-            
-            {/* Header Card */}
-            <div className="bg-gradient-to-r from-emerald-900 to-teal-800 rounded-3xl p-6 text-white shadow-xl mb-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl transform translate-x-10 -translate-y-10"></div>
-                
-                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                             {isAutoLocating ? <Loader2 className="animate-spin w-4 h-4"/> : <MapPin className="w-4 h-4 text-emerald-300" />}
-                             <h2 className="text-2xl font-bold">{city || locationInput}</h2>
-                             <button onClick={() => setIsEditingLocation(!isEditingLocation)} className="p-1.5 bg-white/10 rounded-full hover:bg-white/20 transition-colors"><Edit2 size={12} /></button>
-                        </div>
-                        <div className="flex gap-4 text-sm font-medium text-emerald-100 opacity-90">
-                            <span>{hijriDate}</span>
-                            <span>•</span>
-                            <span dir="ltr">{currentDate.toDateString()}</span>
-                        </div>
-                    </div>
-                    
-                    <div className="flex flex-col gap-2 w-full md:w-auto">
-                         <div className="bg-black/20 rounded-xl p-1 flex text-xs font-bold border border-white/10">
-                             <button 
-                                onClick={() => setJurist('hanafi')}
-                                className={`flex-1 px-4 py-2 rounded-lg transition-all ${jurist === 'hanafi' ? 'bg-white text-emerald-900 shadow-sm' : 'text-emerald-100 hover:bg-white/5'}`}
-                             >
-                                فقہ حنفی (پاکستان)
-                             </button>
-                             <button 
-                                onClick={() => setJurist('shafi')}
-                                className={`flex-1 px-4 py-2 rounded-lg transition-all ${jurist === 'shafi' ? 'bg-white text-emerald-900 shadow-sm' : 'text-emerald-100 hover:bg-white/5'}`}
-                             >
-                                فقہ شافعی/مالکی
-                             </button>
-                         </div>
-                    </div>
+            <div className="bg-gradient-to-br from-emerald-900 to-teal-950 text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden ring-4 ring-emerald-50 text-center">
+                <h2 className="text-4xl font-bold mb-4 drop-shadow-md">اوقاتِ نماز</h2>
+                <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20">
+                    <Clock size={20} className="text-yellow-400" />
+                    <span className="text-2xl font-bold tracking-widest font-mono" dir="ltr">{currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
                 </div>
-
-                 {/* Manual Location Input */}
-                 {isEditingLocation && (
-                    <div className="mt-4 pt-4 border-t border-white/10 animate-fade-in flex gap-2 items-center">
-                        <div className="flex-1">
-                            <VoiceInput 
-                                value={locationInput}
-                                onChange={setLocationInput}
-                                placeholder="شہر کا نام..."
-                                className="text-sm h-10" // Adjust height to match button roughly
-                            />
-                        </div>
-                        <button onClick={handleManualSearch} className="bg-yellow-400 text-emerald-900 px-4 py-2 rounded-xl font-bold text-sm hover:bg-yellow-300 h-12 shadow-sm">
-                            تلاش
-                        </button>
-                    </div>
-                )}
+                <div className="flex justify-center mt-6 gap-3">
+                    <button onClick={fetchTimes} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all border border-white/20 active:scale-95"><RefreshCw size={20} className={loading ? 'animate-spin' : ''} /></button>
+                    <button onClick={toggleAlerts} className={`p-3 rounded-2xl transition-all border active:scale-95 flex items-center gap-2 ${isAlertEnabled ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-white/10 text-white border-white/20'}`}>
+                        {isAlertEnabled ? <Bell size={20} /> : <BellOff size={20} />}
+                        <span className="text-xs font-bold">{isAlertEnabled ? 'الرٹ آن ہے' : 'الرٹ آن کریں'}</span>
+                    </button>
+                </div>
             </div>
-
-            {loading ? (
-                <div className="p-12 text-center">
-                    <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mx-auto mb-4" />
-                    <p className="text-gray-500 font-bold">اوقات کا حساب لگایا جا رہا ہے...</p>
-                </div>
-            ) : prayerData && !prayerData.error ? (
-                <>
-                    {/* Main Prayers Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
-                        <PrayerCard 
-                            title="فجر" 
-                            time={prayerData.fajr} 
-                            icon={CloudSun} 
-                            color="from-blue-400 to-blue-600" 
-                            prayerKey="fajr"
-                            customOffset={customOffsets['fajr']}
-                            isAlarm={activeAlarms['fajr']}
-                            onOffsetChange={changeOffset}
-                            onAlarmToggle={toggleAlarm}
-                        />
-                        <PrayerCard 
-                            title="طلوع آفتاب" 
-                            time={prayerData.sunrise} 
-                            icon={Sunrise} 
-                            color="from-orange-400 to-red-500" 
-                            isForbidden={true} 
-                            prayerKey="sunrise" 
-                            customOffset={0}
-                            isAlarm={false}
-                            onOffsetChange={() => {}}
-                            onAlarmToggle={() => {}}
-                        />
-                        <PrayerCard 
-                            title="ظہر" 
-                            time={prayerData.dhuhr} 
-                            icon={Sun} 
-                            color="from-yellow-400 to-orange-500" 
-                            prayerKey="dhuhr" 
-                            customOffset={customOffsets['dhuhr']}
-                            isAlarm={activeAlarms['dhuhr']}
-                            onOffsetChange={changeOffset}
-                            onAlarmToggle={toggleAlarm}
-                        />
-                        <PrayerCard 
-                            title="عصر" 
-                            time={prayerData.asr} 
-                            icon={CloudSun} 
-                            color="from-orange-300 to-orange-600" 
-                            isActive={true} 
-                            prayerKey="asr" 
-                            customOffset={customOffsets['asr']}
-                            isAlarm={activeAlarms['asr']}
-                            onOffsetChange={changeOffset}
-                            onAlarmToggle={toggleAlarm}
-                        /> 
-                        <PrayerCard 
-                            title="مغرب" 
-                            time={prayerData.maghrib} 
-                            icon={Sunset} 
-                            color="from-indigo-400 to-purple-600" 
-                            prayerKey="maghrib" 
-                            customOffset={customOffsets['maghrib']}
-                            isAlarm={activeAlarms['maghrib']}
-                            onOffsetChange={changeOffset}
-                            onAlarmToggle={toggleAlarm}
-                        />
-                        <PrayerCard 
-                            title="عشاء" 
-                            time={prayerData.isha} 
-                            icon={Moon} 
-                            color="from-slate-600 to-slate-800" 
-                            prayerKey="isha" 
-                            customOffset={customOffsets['isha']}
-                            isAlarm={activeAlarms['isha']}
-                            onOffsetChange={changeOffset}
-                            onAlarmToggle={toggleAlarm}
-                        />
-                    </div>
-
-                    {/* Nawafil Section */}
-                    <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
-                        <h3 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
-                            <Star className="text-yellow-500 fill-yellow-500" size={18} /> نوافل و ممنوعہ اوقات
-                        </h3>
-                        <div className="divide-y divide-gray-100">
-                            <div className="py-3 flex justify-between items-center">
-                                <span className="text-gray-600 text-sm">نماز اشراق (طلوع کے 20 منٹ بعد)</span>
-                                <span className="font-bold text-emerald-700" dir="ltr">{adjustTimeStr(prayerData.ishraq, customOffsets['ishraq'] || 0)}</span>
-                            </div>
-                            <div className="py-3 flex justify-between items-center">
-                                <span className="text-gray-600 text-sm">نماز چاشت</span>
-                                <span className="font-bold text-emerald-700" dir="ltr">{adjustTimeStr(prayerData.chasht, customOffsets['chasht'] || 0)}</span>
-                            </div>
-                            <div className="py-3 flex justify-between items-center bg-red-50 px-2 rounded-lg">
-                                <span className="text-red-600 font-bold text-sm">زوال (ممنوعہ وقت)</span>
-                                <span className="font-bold text-red-700" dir="ltr">{prayerData.zawal_start}</span>
-                            </div>
-                            <div className="py-3 flex justify-between items-center">
-                                <span className="text-gray-600 text-sm">نماز تہجد</span>
-                                <span className="font-bold text-indigo-700" dir="ltr">{adjustTimeStr(prayerData.tahajjud, customOffsets['tahajjud'] || 0)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </>
-            ) : (
-                !loading && <div className="text-center p-8 bg-red-50 rounded-2xl text-red-600">
-                    معذرت، ڈیٹا حاصل کرنے میں مسئلہ پیش آیا۔ دوبارہ کوشش کریں۔
-                    <button onClick={handleManualSearch} className="block mx-auto mt-2 underline">دوبارہ کوشش</button>
+            {loading ? <div className="p-12 text-center">لوڈنگ...</div> : prayerData && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <PrayerRow id="fajr" urdu="فجر" baseTime={prayerData.fajr} icon={CloudSun} color="bg-indigo-600" />
+                    <PrayerRow id="sunrise" urdu="طلوع آفتاب" baseTime={prayerData.sunrise} icon={Sunrise} color="bg-orange-500" isForbidden />
+                    <PrayerRow id="dhuhr" urdu="ظہر" baseTime={prayerData.dhuhr} icon={Sun} color="bg-yellow-500" />
+                    <PrayerRow id="asr" urdu="عصر" baseTime={prayerData.asr} icon={ThermometerSun} color="bg-amber-600" />
+                    <PrayerRow id="maghrib" urdu="مغرب" baseTime={prayerData.maghrib} icon={Sunset} color="bg-purple-700" />
+                    <PrayerRow id="isha" urdu="عشاء" baseTime={prayerData.isha} icon={Moon} color="bg-slate-800" />
                 </div>
             )}
         </div>
     );
 };
 
-// --- Missing Components Implementation ---
-
+// --- General AI Section ---
 export const GeneralAISection = ({ title, icon: Icon, colorClass, promptContext, onBack }: any) => {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -1152,9 +760,7 @@ export const GeneralAISection = ({ title, icon: Icon, colorClass, promptContext,
     const handleAsk = async () => {
         if (!input.trim()) return;
         setLoading(true);
-        setResult(null);
-        const fullPrompt = `${promptContext}\n\nصارف کا سوال: ${input}`;
-        const res = await generateSpiritualResponse(fullPrompt);
+        const res = await generateSpiritualResponse(`${promptContext}\nسوال: ${input}`);
         setResult(res);
         setLoading(false);
     };
@@ -1164,375 +770,229 @@ export const GeneralAISection = ({ title, icon: Icon, colorClass, promptContext,
              <BackButton onClick={onBack} />
              <div className={`bg-white rounded-3xl shadow-xl p-6 border-t-4 ${colorClass}`}>
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-gray-50 rounded-full"><Icon size={24} className="text-gray-700"/></div>
+                    <Icon className="text-emerald-600" size={28} />
                     <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
                 </div>
-                
-                <VoiceInput 
-                    value={input}
-                    onChange={setInput}
-                    placeholder="اپنا مسئلہ یا سوال یہاں بیان کریں..."
-                    multiline
-                    className="min-h-[120px] mb-4"
-                />
-
-                <button 
-                    onClick={handleAsk}
-                    disabled={loading || !input.trim()}
-                    className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                    {loading ? <Loader2 className="animate-spin"/> : <Send size={18} />}
-                    جواب حاصل کریں
+                <VoiceInput value={input} onChange={setInput} placeholder="اپنا سوال یہاں لکھیں..." multiline className="mb-4" />
+                <button onClick={handleAsk} disabled={loading || !input} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2">
+                    {loading ? <Loader2 className="animate-spin" /> : <Send size={18} />} جواب حاصل کریں
                 </button>
-
                 <GenericResult loading={loading} result={result} title={title} />
-             </div>
-        </div>
-    )
-}
-
-export const ContactSection = ({ onBack }: SectionProps) => {
-    return (
-        <div className="max-w-2xl mx-auto animate-fade-in">
-             <BackButton onClick={onBack} />
-             <div className="bg-white rounded-3xl shadow-xl p-8 border-t-4 border-yellow-500 text-center">
-                 <div className="w-24 h-24 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                     <Phone size={40} className="text-yellow-600" />
-                 </div>
-                 <h2 className="text-2xl font-bold text-gray-800 mb-2">رابطہ برائے رہنمائی</h2>
-                 <p className="text-gray-500 mb-8">کسی بھی قسم کی ذاتی رہنمائی، تشخیص یا علاج کے لیے ماہرین سے رابطہ کریں۔</p>
-                 
-                 <div className="space-y-4 text-right">
-                     <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                         <h3 className="font-bold text-emerald-800 mb-1">حکیم غلام یاسین آرائیں (کہروڑ پکا)</h3>
-                         <p className="text-sm text-gray-600">ماہر امراضِ پیچیدہ و جنسیات، ماہر نبض</p>
-                         <div className="mt-3 flex gap-2">
-                            <a href="tel:+923001234567" className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-emerald-200">کال کریں</a>
-                            <a href="https://wa.me/923001234567" className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-green-200">واٹس ایپ</a>
-                         </div>
-                     </div>
-
-                     <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                         <h3 className="font-bold text-teal-800 mb-1">حاجی اشفاق احمد (خانیوال)</h3>
-                         <p className="text-sm text-gray-600">ماہر عملیات و تعویذات، روحانی علاج</p>
-                         <div className="mt-3 flex gap-2">
-                            <a href="tel:+923007654321" className="bg-teal-100 text-teal-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-teal-200">کال کریں</a>
-                            <a href="https://wa.me/923007654321" className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-green-200">واٹس ایپ</a>
-                         </div>
-                     </div>
-                 </div>
-             </div>
-        </div>
-    )
-}
-
-export const NumerologySection = ({ onBack }: SectionProps) => {
-    const [data, setData] = useState({ name: '', motherName: '', fatherName: '', dob: '', topic: 'general', extra: '' });
-    const [result, setResult] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    const handleSubmit = async () => {
-        if(!data.name) return alert("نام لکھنا ضروری ہے");
-        setLoading(true);
-        const res = await getNumerologyAnalysis(data, data.topic, data.extra);
-        setResult(res);
-        setLoading(false);
-    };
-
-    return (
-        <div className="max-w-3xl mx-auto animate-fade-in">
-             <BackButton onClick={onBack} />
-             <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-emerald-500">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-emerald-50 rounded-full"><Calculator size={24} className="text-emerald-700"/></div>
-                    <h2 className="text-2xl font-bold text-gray-800">علم الاعداد (Numerology)</h2>
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-4 mb-4">
-                    <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="اپنا نام لکھیں" />
-                    <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
-                    <input type="date" value={data.dob} onChange={e => setData({...data, dob: e.target.value})} className="p-3 border rounded-xl w-full" />
-                    <select className="p-3 border rounded-xl w-full" value={data.topic} onChange={e => setData({...data, topic: e.target.value})}>
-                        <option value="general">عام تجزیہ</option>
-                        <option value="lucky_stone">لکی پتھر</option>
-                        <option value="relation_spouse">شریک حیات سے مناسبت</option>
-                        <option value="business_suitability">کاروبار اور کیریئر</option>
-                    </select>
-                </div>
-                
-                {data.topic === 'relation_spouse' && (
-                     <VoiceInput value={data.extra} onChange={v => setData({...data, extra: v})} placeholder="شریک حیات کا نام" className="mb-4" />
-                )}
-
-                <button onClick={handleSubmit} disabled={loading} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
-                    {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={18} />} تجزیہ کریں
-                </button>
-
-                <GenericResult loading={loading} result={result} title="عددی زائچہ" />
              </div>
         </div>
     );
 };
 
+// --- Spiritual & Islamic Education Section ---
+export const SpiritualSection = ({ onBack }: SectionProps) => {
+    const [view, setView] = useState<'menu' | 'category' | 'detail' | 'ai'>('menu');
+    const [category, setCategory] = useState<any>(null);
+    const [selectedItem, setSelectedItem] = useState<any>(null);
+
+    const categories = [
+        { id: 'kalima', title: 'کلمہ جات', icon: Star, color: 'bg-emerald-500', items: [{ name: 'پہلا کلمہ (طیب)', content: 'لَا إِلٰهَ إِلَّا اللهُ مُحَمَّدٌ رَسُولُ اللهِ\n\n**ترجمہ:** اللہ کے سوا کوئی معبود نہیں اور محمد (صلی اللہ علیہ وآلہ وسلم) اللہ کے رسول ہیں۔' }] },
+        { id: 'dua', title: 'مسنون دعائیں', icon: Moon, color: 'bg-cyan-500', items: [{ name: 'کھانا کھانے کی دعا', content: 'بِسْمِ اللَّهِ وَعَلَى بَرَكَةِ اللَّهِ' }] }
+    ];
+
+    return (
+        <div className="max-w-4xl mx-auto animate-fade-in">
+            <BackButton onClick={onBack} />
+            <div className="bg-emerald-900 text-white p-8 rounded-[2.5rem] shadow-2xl mb-8 text-center">
+                <h2 className="text-4xl font-bold mb-2">روحانی و اسلامی تعلیمات</h2>
+            </div>
+            {view === 'menu' && (
+                <div className="grid grid-cols-2 gap-4">
+                    {categories.map((cat) => (
+                        <button key={cat.id} onClick={() => { setCategory(cat); setView('category'); }} className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:scale-[1.03] transition-all flex flex-col items-center gap-3">
+                            <div className={`p-4 rounded-2xl ${cat.color} text-white`}><cat.icon size={32} /></div>
+                            <span className="font-bold text-xl">{cat.title}</span>
+                        </button>
+                    ))}
+                    <button onClick={() => setView('ai')} className="col-span-2 p-6 bg-emerald-50 rounded-3xl border border-emerald-100 shadow-sm flex items-center justify-center gap-3">
+                        <Sparkles className="text-emerald-600" />
+                        <span className="font-bold text-xl text-emerald-800">روحانی مشورہ (AI)</span>
+                    </button>
+                </div>
+            )}
+            {view === 'category' && (
+                <div className="space-y-4">
+                    <button onClick={() => setView('menu')} className="text-emerald-600 font-bold mb-4 flex items-center gap-2"><ArrowRight size={18}/> واپسی</button>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-6">{category?.title}</h3>
+                    {category?.items.map((item: any, idx: number) => (
+                        <button key={idx} onClick={() => { setSelectedItem(item); setView('detail'); }} className="w-full text-right p-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
+                            <span className="font-bold text-lg">{item.name}</span>
+                            <ChevronLeft size={20} className="text-gray-300" />
+                        </button>
+                    ))}
+                </div>
+            )}
+            {view === 'detail' && (
+                <div className="space-y-6">
+                    <button onClick={() => setView('category')} className="text-emerald-600 font-bold flex items-center gap-2"><ArrowRight size={18}/> واپسی</button>
+                    <div className="bg-white rounded-[2rem] shadow-xl border overflow-hidden">
+                        <div className={`p-6 ${category?.color} text-white text-center`}><h4 className="text-2xl font-bold">{selectedItem?.name}</h4></div>
+                        <div className="p-8 text-center bg-[#fffdf5]"><div className="text-3xl leading-[3] text-emerald-900 font-serif" dir="rtl">{selectedItem?.content}</div></div>
+                    </div>
+                </div>
+            )}
+            {view === 'ai' && <GeneralAISection title="روحانی مشورہ" icon={Sparkles} colorClass="border-emerald-500" promptContext="بطور ماہر روحانی معالج جواب دیں۔" onBack={() => setView('menu')} />}
+        </div>
+    );
+};
+
+// --- Medical Section ---
 export const MedicalSection = ({ onBack }: SectionProps) => {
-    const [tab, setTab] = useState<'diagnosis' | 'treatment' | 'medicine'>('diagnosis');
     const [symptoms, setSymptoms] = useState('');
-    const [image, setImage] = useState('');
-    const [treatmentType, setTreatmentType] = useState('طب یونانی و اسلامی');
     const [result, setResult] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-
-    const handleDiagnosis = async () => {
-        if(!symptoms) return alert("علامات لکھنا ضروری ہے");
+    const handleDiagnose = async () => {
+        if (!symptoms) return;
         setLoading(true);
-        setResult(null);
-        const res = await getInitialDiagnosis(symptoms, image);
+        const res = await getInitialDiagnosis(symptoms);
         setResult(res);
         setLoading(false);
-    }
-
-    const handleTreatment = async () => {
-        if(!symptoms) return alert("علامات لکھنا ضروری ہے");
-        setLoading(true);
-        setResult(null);
-        const res = await getMedicalDiagnosis(symptoms, treatmentType, image);
-        setResult(res);
-        setLoading(false);
-    }
-    
-    const handleMedicine = async () => {
-        if(!image) return alert("تصویر اپلوڈ کریں");
-        setLoading(true);
-        setResult(null);
-        const res = await analyzeMedicine(image);
-        setResult(res);
-        setLoading(false);
-    }
-
+    };
     return (
         <div className="max-w-3xl mx-auto animate-fade-in">
              <BackButton onClick={onBack} />
              <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-blue-500">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-blue-50 rounded-full"><Stethoscope size={24} className="text-blue-700"/></div>
-                    <h2 className="text-2xl font-bold text-gray-800">جدید طبی معالج</h2>
-                </div>
-
-                <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl">
-                    {['diagnosis', 'treatment', 'medicine'].map((t) => (
-                        <button 
-                            key={t}
-                            onClick={() => { setTab(t as any); setResult(null); }}
-                            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${tab === t ? 'bg-white shadow text-blue-800' : 'text-gray-500'}`}
-                        >
-                            {t === 'diagnosis' ? 'تشخیص' : t === 'treatment' ? 'علاج/نسخہ' : 'دوائی کی پہچان'}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="space-y-4">
-                    {tab !== 'medicine' && (
-                        <VoiceInput value={symptoms} onChange={setSymptoms} placeholder="اپنی علامات تفصیل سے بتائیں (مثلاً: سر درد، بخار، بھوک نہ لگنا)..." multiline />
-                    )}
-                    
-                    {(tab === 'diagnosis' || tab === 'medicine') && (
-                        <FileUploader onSelect={setImage} label={tab === 'medicine' ? "دوائی کی تصویر اپلوڈ کریں" : "زبان یا متاثرہ حصے کی تصویر (آپشنل)"} />
-                    )}
-
-                    {image && (
-                        <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden relative">
-                            <img src={image} alt="Preview" className="w-full h-full object-cover" />
-                            <button onClick={() => setImage('')} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"><X size={14}/></button>
-                        </div>
-                    )}
-
-                    {tab === 'treatment' && (
-                        <select className="w-full p-3 border rounded-xl bg-gray-50" value={treatmentType} onChange={e => setTreatmentType(e.target.value)}>
-                            <option>طب یونانی و اسلامی</option>
-                            <option>ایلوپیتھک (Allopathic)</option>
-                            <option>ہومیوپیتھی (Homeopathy)</option>
-                            <option>حجامہ (Hijama)</option>
-                        </select>
-                    )}
-
-                    <button 
-                        onClick={tab === 'diagnosis' ? handleDiagnosis : tab === 'treatment' ? handleTreatment : handleMedicine}
-                        disabled={loading}
-                        className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
-                    >
-                        {loading ? <Loader2 className="animate-spin" /> : <Activity size={18} />} 
-                        {tab === 'diagnosis' ? 'بیماری کی تشخیص کریں' : tab === 'treatment' ? 'نسخہ تجویز کریں' : 'معلومات حاصل کریں'}
-                    </button>
-                </div>
-
-                <GenericResult loading={loading} result={result} title={tab === 'diagnosis' ? 'تشخیص' : tab === 'treatment' ? 'تجویز کردہ علاج' : 'دوائی کی معلومات'} />
+                <div className="flex items-center gap-3 mb-6"><Stethoscope className="text-blue-600" size={28} /><h2 className="text-2xl font-bold text-gray-800">امراض کی تشخیص</h2></div>
+                <VoiceInput value={symptoms} onChange={setSymptoms} placeholder="اپنی علامات تفصیل سے لکھیں..." multiline className="mb-4" />
+                <button onClick={handleDiagnose} disabled={loading || !symptoms} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2">{loading ? <Loader2 className="animate-spin" /> : <Activity size={18} />} تشخیص کریں</button>
+                <GenericResult loading={loading} result={result} title="تشخیص" />
              </div>
         </div>
     );
 };
 
+// --- Document Section ---
 export const DocumentSection = ({ onBack }: SectionProps) => {
-    const [image, setImage] = useState('');
-    const [result, setResult] = useState<string | null>(null);
+    const [image, setImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-
-    const handleScan = async () => {
-        if(!image) return alert("تصویر اپلوڈ کریں");
+    const [result, setResult] = useState<string | null>(null);
+    const handleProcessImage = async (base64: string) => {
+        setImage(base64);
         setLoading(true);
-        const res = await scanDocument(image);
-        setResult(res);
+        try { const res = await scanDocument(base64); setResult(res); } catch (e) { }
         setLoading(false);
     };
-
     return (
         <div className="max-w-3xl mx-auto animate-fade-in">
-             <BackButton onClick={onBack} />
-             <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-gray-500">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-gray-100 rounded-full"><FileText size={24} className="text-gray-700"/></div>
-                    <h2 className="text-2xl font-bold text-gray-800">دستاویز ریڈر (OCR)</h2>
+            <BackButton onClick={onBack} />
+            <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-gray-600">
+                <div className="flex items-center gap-3 mb-6"><FileText size={28} /><h2 className="text-2xl font-bold text-gray-800">دستاویز ریڈر</h2></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    <FileUploader label="دستاویز اپ لوڈ کریں" icon={Upload} onSelect={handleProcessImage} />
+                    <FileUploader label="تصویر کھینچیں" icon={Camera} onSelect={handleProcessImage} />
                 </div>
-                
-                <FileUploader onSelect={setImage} label="رپورٹ یا تحریر کی تصویر اپلوڈ کریں" />
-                
-                {image && (
-                     <div className="w-full h-48 bg-gray-100 rounded-lg overflow-hidden relative mt-4">
-                        <img src={image} alt="Preview" className="w-full h-full object-contain" />
-                        <button onClick={() => setImage('')} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"><X size={14}/></button>
-                     </div>
-                )}
-
-                <button onClick={handleScan} disabled={loading || !image} className="w-full mt-4 py-3 bg-gray-700 text-white rounded-xl font-bold shadow-lg hover:bg-gray-800 transition-all flex items-center justify-center gap-2">
-                    {loading ? <Loader2 className="animate-spin" /> : <Search size={18} />} تجزیہ کریں
-                </button>
-
-                <GenericResult loading={loading} result={result} title="دستاویز کا خلاصہ" />
-             </div>
+                {image && <img src={image} alt="Selected" className="max-h-48 mx-auto rounded-xl mb-6" />}
+                <GenericResult loading={loading} result={result} title="خلاصہ" />
+            </div>
         </div>
     );
 };
 
-export const HoroscopeSection = ({ onBack }: SectionProps) => {
-    const [tab, setTab] = useState<'chart' | 'match' | 'istikhara'>('chart');
-    const [data, setData] = useState<any>({ name: '', motherName: '', dob: '', date: new Date().toLocaleDateString(), question: '', name2: '' });
-    const [result, setResult] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    const handleSubmit = async () => {
-        setLoading(true);
-        const res = await getHoroscopeAnalysis(data, tab, data);
-        setResult(res);
-        setLoading(false);
-    };
-
-    return (
-        <div className="max-w-3xl mx-auto animate-fade-in">
-             <BackButton onClick={onBack} />
-             <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-orange-500">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-orange-50 rounded-full"><Star size={24} className="text-orange-600"/></div>
-                    <h2 className="text-2xl font-bold text-gray-800">زائچہ و نجوم</h2>
-                </div>
-
-                <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl">
-                    <button onClick={() => { setTab('chart'); setResult(null); }} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'chart' ? 'bg-white shadow text-orange-600' : 'text-gray-500'}`}>زائچہ قسمت</button>
-                    <button onClick={() => { setTab('match'); setResult(null); }} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'match' ? 'bg-white shadow text-orange-600' : 'text-gray-500'}`}>رشتہ/پارٹنر</button>
-                    <button onClick={() => { setTab('istikhara'); setResult(null); }} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'istikhara' ? 'bg-white shadow text-orange-600' : 'text-gray-500'}`}>استخارہ</button>
-                </div>
-
-                <div className="space-y-4">
-                     <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="اپنا نام" />
-                     {tab === 'chart' && (
-                        <>
-                             <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
-                             <input type="date" className="w-full p-3 border rounded-xl" onChange={e => setData({...data, dob: e.target.value})} />
-                             <input type="time" className="w-full p-3 border rounded-xl" onChange={e => setData({...data, birthTime: e.target.value})} />
-                        </>
-                     )}
-                     {tab === 'match' && (
-                         <>
-                             <VoiceInput value={data.name2} onChange={v => setData({...data, name2: v})} placeholder="دوسرا نام (شریک)" />
-                             <select className="w-full p-3 border rounded-xl" onChange={e => setData({...data, relationType: e.target.value})}>
-                                 <option>شادی</option>
-                                 <option>دوستی</option>
-                                 <option>کاروبار</option>
-                             </select>
-                         </>
-                     )}
-                     {tab === 'istikhara' && (
-                         <VoiceInput value={data.question} onChange={v => setData({...data, question: v})} placeholder="اپنا سوال پوچھیں..." multiline />
-                     )}
-
-                     <button onClick={handleSubmit} disabled={loading} className="w-full py-3 bg-orange-600 text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2">
-                         {loading ? <Loader2 className="animate-spin"/> : <Sparkles size={18} />} معلوم کریں
-                     </button>
-                </div>
-                <GenericResult loading={loading} result={result} title={tab === 'chart' ? 'زائچہ' : 'نتیجہ'} />
-             </div>
-        </div>
-    );
-};
-
+// --- Black Magic Section ---
 export const BlackMagicSection = ({ onBack }: SectionProps) => {
-    const [tab, setTab] = useState<'diagnosis' | 'history' | 'protection'>('diagnosis');
-    const [data, setData] = useState({ name: '', motherName: '', problem: '' });
+    const [name, setName] = useState('');
+    const [motherName, setMotherName] = useState('');
+    const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<string | null>(null);
-
-    const handleSubmit = async () => {
+    const weekDays = [{ id: 6, urdu: 'ہفتہ' }, { id: 0, urdu: 'اتوار' }, { id: 1, urdu: 'پیر' }, { id: 2, urdu: 'منگل' }, { id: 3, urdu: 'بدھ' }, { id: 4, urdu: 'جمعرات' }, { id: 5, urdu: 'جمعہ' }];
+    const handleDiagnosis = async () => {
+        if (!name || selectedDayId === null) return alert("معلومات درج کریں۔");
         setLoading(true);
-        const res = await getBlackMagicDiagnosis(data, tab);
-        setResult(res);
-        setLoading(false);
+        const grandTotal = calculateAbjad(name) + calculateAbjad(motherName) + calculateAbjad(weekDays.find(d => d.id === selectedDayId)?.urdu || '');
+        const remainder = grandTotal % 4;
+        setTimeout(() => {
+            setResult(remainder === 3 ? "آپ جادو اور سایہ میں مبتلا ہیں ، آپ اپنا علاج کسی ماہر عملیات سے کرائیں یا اسی ایپ میں موجود رابطہ کے سیکشن میں رابطہ کریں ۔" : "آپ کو کالا جادو نہیں ہے، یہ جسمانی مرض ہے۔");
+            setLoading(false);
+        }, 1200);
     };
-
     return (
-        <div className="max-w-3xl mx-auto animate-fade-in">
-             <BackButton onClick={onBack} />
-             <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-red-600">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-red-50 rounded-full"><ShieldCheck size={24} className="text-red-700"/></div>
-                    <h2 className="text-2xl font-bold text-gray-800">روحانی تشخیص و علاج</h2>
+        <div className="max-w-4xl mx-auto animate-fade-in">
+            <BackButton onClick={onBack} />
+            <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-red-600">
+                <h2 className="text-2xl font-bold mb-6">کالا جادو کی تشخیص</h2>
+                <div className="space-y-4 mb-6">
+                    <VoiceInput value={name} onChange={setName} placeholder="آپ کا نام" />
+                    <VoiceInput value={motherName} onChange={setMotherName} placeholder="والدہ کا نام" />
+                    <div className="grid grid-cols-4 gap-2">
+                        {weekDays.map(d => <button key={d.id} onClick={() => setSelectedDayId(d.id)} className={`p-2 rounded-xl border text-xs ${selectedDayId === d.id ? 'bg-red-600 text-white' : 'bg-gray-50'}`}>{d.urdu}</button>)}
+                    </div>
                 </div>
-                
-                <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl">
-                    {['diagnosis', 'history', 'protection'].map(t => (
-                        <button key={t} onClick={() => { setTab(t as any); setResult(null); }} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === t ? 'bg-white shadow text-red-800' : 'text-gray-500'}`}>
-                            {t === 'diagnosis' ? 'تشخیص' : t === 'history' ? 'ہسٹری' : 'علاج/حصار'}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="space-y-4">
-                    <VoiceInput value={data.name} onChange={v => setData({...data, name: v})} placeholder="مریض کا نام" />
-                    <VoiceInput value={data.motherName} onChange={v => setData({...data, motherName: v})} placeholder="والدہ کا نام" />
-                    {tab !== 'diagnosis' && (
-                        <VoiceInput value={data.problem} onChange={v => setData({...data, problem: v})} placeholder="مسئلہ بیان کریں..." multiline />
-                    )}
-                    <button onClick={handleSubmit} disabled={loading} className="w-full py-3 bg-red-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg">
-                        {loading ? <Loader2 className="animate-spin"/> : <Shield size={18}/>} چیک کریں
-                    </button>
-                </div>
-                <GenericResult loading={loading} result={result} title="رپورٹ" />
-             </div>
+                <button onClick={handleDiagnosis} className="w-full py-4 bg-red-600 text-white rounded-2xl font-bold">تشخیص کریں</button>
+                <GenericResult loading={loading} result={result} title="روحانی تشخیص" />
+            </div>
         </div>
     );
 };
 
-export const WazaifSection = ({ onBack }: SectionProps) => {
+// --- Time Science Section ---
+export const TimeScienceSection = ({ onBack }: SectionProps) => {
+    const [name, setName] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState<string | null>(null);
+    const handleAnalyze = async () => {
+        if (!name) return;
+        setLoading(true);
+        const res = await generateSpiritualResponse(`بطور ماہر علم الساعات، ${name} کے لیے وقت کی تاثیر بتائیں۔`);
+        setResult(res);
+        setLoading(false);
+    };
     return (
-        <HoroscopeSection onBack={onBack} /> // Reuse or create specific
+        <div className="max-w-3xl mx-auto animate-fade-in">
+            <BackButton onClick={onBack} />
+            <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-purple-600">
+                <h2 className="text-2xl font-bold mb-6">علم الساعات</h2>
+                <VoiceInput value={name} onChange={setName} placeholder="نام لکھیں..." className="mb-4" />
+                <button onClick={handleAnalyze} className="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold">تجزیہ کریں</button>
+                <GenericResult loading={loading} result={result} title="ساعات کا نتیجہ" />
+            </div>
+        </div>
     );
 };
 
-export const TimeScienceSection = ({ onBack }: SectionProps) => {
+// --- Wazaif Section ---
+export const WazaifSection = ({ onBack }: SectionProps) => <GeneralAISection title="استخارہ و وظائف" icon={BookOpen} colorClass="border-teal-600" promptContext="ماہر استخارہ کے طور پر جواب دیں۔" onBack={onBack} />;
+
+// --- Numerology Section ---
+export const NumerologySection = ({ onBack }: SectionProps) => {
+    const [name, setName] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState<string | null>(null);
+    const handleAnalyze = async () => {
+        if (!name) return;
+        setLoading(true);
+        const res = await generateSpiritualResponse(`بطور ماہر علم الاعداد، ${name} کا تفصیلی تجزیہ کریں۔`);
+        setResult(res);
+        setLoading(false);
+    };
     return (
-        <GeneralAISection 
-            title="علم الساعات (Time Science)"
-            icon={Clock}
-            colorClass="border-purple-500"
-            promptContext="بطور ماہر علم الساعات، موجودہ وقت کی تاثیر، سعد و نحس گھڑی، اور اس وقت کیے جانے والے کام کے انجام کے بارے میں بتائیں۔"
-            onBack={onBack}
-        />
+        <div className="max-w-3xl mx-auto animate-fade-in">
+            <BackButton onClick={onBack} />
+            <div className="bg-white rounded-3xl shadow-xl p-6 border-t-4 border-emerald-500">
+                <h2 className="text-2xl font-bold mb-6">علم الاعداد</h2>
+                <VoiceInput value={name} onChange={setName} placeholder="نام لکھیں..." className="mb-4" />
+                <button onClick={handleAnalyze} className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold">رپورٹ حاصل کریں</button>
+                <GenericResult loading={loading} result={result} title="علم الاعداد رپورٹ" />
+            </div>
+        </div>
+    );
+};
+
+// --- Contact Section ---
+export const ContactSection = ({ onBack }: SectionProps) => {
+    return (
+        <div className="max-w-4xl mx-auto animate-fade-in">
+            <BackButton onClick={onBack} />
+            <div className="bg-white rounded-3xl shadow-xl p-8 border text-center">
+                <Phone size={48} className="mx-auto text-emerald-600 mb-6" />
+                <h2 className="text-3xl font-bold mb-8">رابطہ کریں</h2>
+                <a href="https://wa.me/923009459059" target="_blank" className="block w-full py-4 bg-green-500 text-white rounded-2xl font-bold text-xl mb-4">وٹس ایپ (WhatsApp)</a>
+                <p className="text-gray-500">appstalk3@gmail.com</p>
+            </div>
+        </div>
     );
 };

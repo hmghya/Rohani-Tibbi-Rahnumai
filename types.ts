@@ -1,18 +1,19 @@
 
 export enum AppSection {
   Home = 'Home',
-  Calendar = 'Calendar', // New Calendar Section
-  PrayerTimes = 'PrayerTimes', // New Prayer Times Section
-  Numerology = 'Numerology', // Ilm-ul-Adad
-  TimeScience = 'TimeScience', // Ilm-us-Sa'at
-  Horoscope = 'Horoscope', // Zaicha
-  Spiritual = 'Spiritual', // Rohani Ilm
-  Wazaif = 'Wazaif', // Qurani Wazaif
-  BlackMagic = 'BlackMagic', // Kala Jadu
-  Medical = 'Medical', // Ilm-e-Tib
-  Documents = 'Documents', // OCR
-  Contact = 'Contact', // Rabta
-  Settings = 'Settings' // New Settings Section
+  Calendar = 'Calendar',
+  PrayerTimes = 'PrayerTimes',
+  Numerology = 'Numerology',
+  TimeScience = 'TimeScience',
+  Horoscope = 'Horoscope',
+  Spiritual = 'Spiritual',
+  Wazaif = 'Wazaif',
+  BlackMagic = 'BlackMagic',
+  Medical = 'Medical',
+  Documents = 'Documents',
+  Contact = 'Contact',
+  Settings = 'Settings',
+  Tasbeeh = 'Tasbeeh'
 }
 
 export interface NavItem {
