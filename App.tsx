@@ -4,8 +4,8 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import PrivacyModal from './components/PrivacyModal';
 import { AppSection } from './types';
-import { NumerologySection, MedicalSection, DocumentSection, GeneralAISection, ContactSection, PrayerTimesSection, HoroscopeSection, BlackMagicSection, WazaifSection, TimeScienceSection, CalendarSection, SettingsSection, SpiritualSection, TasbeehCounterSection } from './components/FeatureComponents';
-import { Clock, Moon, Shield, Sun, Star, Stethoscope, Calculator, BookOpen, Phone, FileText, ArrowRight, CalendarDays, Sparkles, MoveLeft, Key, AlertTriangle, Fingerprint } from 'lucide-react';
+import { NumerologySection, MedicalSection, DocumentSection, GeneralAISection, ContactSection, PrayerTimesSection, HoroscopeSection, BlackMagicSection, WazaifSection, TimeScienceSection, CalendarSection, SettingsSection, SpiritualSection } from './components/FeatureComponents';
+import { Clock, Moon, Shield, Sun, Star, Stethoscope, Calculator, BookOpen, Phone, FileText, ArrowRight, CalendarDays, Sparkles, MoveLeft, Key, AlertTriangle } from 'lucide-react';
 
 // --- Welcome Screen Component ---
 const WelcomeScreen = ({ onEnter }: { onEnter: () => void }) => {
@@ -57,7 +57,6 @@ const App: React.FC = () => {
     switch (currentSection) {
       case AppSection.Calendar: return <CalendarSection onBack={goBack} />;
       case AppSection.PrayerTimes: return <PrayerTimesSection onBack={goBack} />;
-      case AppSection.Tasbeeh: return <TasbeehCounterSection onBack={goBack} />;
       case AppSection.Numerology: return <NumerologySection onBack={goBack} />;
       case AppSection.Medical: return <MedicalSection onBack={goBack} />;
       case AppSection.Documents: return <DocumentSection onBack={goBack} />;
@@ -87,7 +86,6 @@ const App: React.FC = () => {
 const HomeDashboard = ({ onNavigate }: { onNavigate: (s: AppSection) => void }) => {
   const cards = [
     { id: AppSection.Medical, title: 'جدید دواخانہ', desc: 'تشخیص و علاج', color: 'text-blue-700', bg: 'bg-blue-50', icon: Stethoscope },
-    { id: AppSection.Tasbeeh, title: 'تسبیح کاؤنٹر', desc: 'ڈیجیٹل تسبیح', color: 'text-emerald-700', bg: 'bg-emerald-50', icon: Fingerprint },
     { id: AppSection.PrayerTimes, title: 'اوقاتِ نماز', desc: 'نماز و الرٹ', color: 'text-teal-700', bg: 'bg-teal-50', icon: Moon },
     { id: AppSection.Numerology, title: 'علم الاعداد', desc: 'نام کے اعداد', color: 'text-emerald-700', bg: 'bg-emerald-50', icon: Calculator },
     { id: AppSection.Wazaif, title: 'استخارہ', desc: 'روحانی رہنمائی', color: 'text-teal-800', bg: 'bg-teal-100', icon: BookOpen },

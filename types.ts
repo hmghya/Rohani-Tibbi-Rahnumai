@@ -12,8 +12,7 @@ export enum AppSection {
   Medical = 'Medical',
   Documents = 'Documents',
   Contact = 'Contact',
-  Settings = 'Settings',
-  Tasbeeh = 'Tasbeeh'
+  Settings = 'Settings'
 }
 
 export interface NavItem {
