@@ -41,7 +41,7 @@ const GenericResult: React.FC<GenericResultProps> = ({ loading, result, title })
         const canvas = await html2canvas(contentRef.current, {
             scale: 2, // Higher scale for better resolution
             useCORS: true, // Handle cross-origin images if any
-            backgroundColor: '#fffdf5', // Match paper color
+            backgroundColor: '#0f172a', // Match slate-900 color for PDF
             logging: false,
         });
 
@@ -70,7 +70,18 @@ const GenericResult: React.FC<GenericResultProps> = ({ loading, result, title })
             heightLeft -= pdfHeight;
         }
 
-        pdf.save(`${title ? title.replace(/\s+/g, '_') : 'Result'}.pdf`);
+        // --- Filename Enhancement ---
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+        const timeStr = now.getHours().toString().padStart(2, '0') + now.getMinutes().toString().padStart(2, '0');
+        
+        // Sanitize the title: Keep alphanumeric characters and Urdu range, replace spaces with underscores
+        const sanitizedTitle = title 
+            ? title.trim().replace(/[^\w\s\u0600-\u06FF]/g, '').replace(/\s+/g, '_') 
+            : 'Rohani_Result';
+
+        const fileName = `${sanitizedTitle}_${dateStr}_${timeStr}.pdf`;
+        pdf.save(fileName);
     } catch (error) {
         console.error("PDF Generation Error:", error);
         alert("پی ڈی ایف بنانے میں مسئلہ پیش آیا۔ براہ کرم دوبارہ کوشش کریں۔");
@@ -117,7 +128,7 @@ const GenericResult: React.FC<GenericResultProps> = ({ loading, result, title })
             </button>
         </div>
 
-        <div ref={contentRef} className="bg-[#fffdf5] rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden relative border border-stone-200">
+        <div ref={contentRef} className="bg-slate-900 rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] overflow-hidden relative border border-slate-800">
             
             {/* Decorative Header - Letterhead Style */}
             <div className="bg-emerald-900 text-white p-8 text-center relative overflow-hidden">
@@ -131,29 +142,29 @@ const GenericResult: React.FC<GenericResultProps> = ({ loading, result, title })
                  </div>
             </div>
 
-            {/* Paper Texture & Content */}
-            <div className="p-6 md:p-10 text-gray-800 text-base leading-[2.2] relative">
+            {/* Paper Texture & Content - Updated to Dark Background and White Text */}
+            <div className="p-6 md:p-10 text-white text-base leading-[2.2] relative">
                 {/* Subtle Watermark */}
-                <div className="absolute inset-0 pointer-events-none opacity-[0.03] flex items-center justify-center overflow-hidden">
-                    <svg width="400" height="400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"/></svg>
+                <div className="absolute inset-0 pointer-events-none opacity-[0.05] flex items-center justify-center overflow-hidden">
+                    <svg width="400" height="400" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"/></svg>
                 </div>
 
-                <div className="prose prose-emerald prose-lg prose-h1:!text-2xl prose-h2:!text-xl prose-h3:!text-lg prose-h4:!text-base prose-headings:!leading-relaxed max-w-none ur-text relative z-10 text-justify">
+                <div className="prose prose-invert prose-emerald prose-lg prose-h1:!text-2xl prose-h2:!text-xl prose-h3:!text-lg prose-h4:!text-base prose-headings:!leading-relaxed max-w-none ur-text relative z-10 text-justify">
                     <Markdown>{result}</Markdown>
                 </div>
             </div>
 
-            {/* Footer Stamp */}
-            <div className="bg-stone-50 p-6 text-center border-t-2 border-emerald-900/10 border-dashed relative">
-                <div className="flex flex-col items-center justify-center gap-2 opacity-80">
+            {/* Footer Stamp - Updated for Dark Theme */}
+            <div className="bg-slate-800/50 p-6 text-center border-t-2 border-white/5 border-dashed relative">
+                <div className="flex flex-col items-center justify-center gap-2 opacity-90">
                     {/* Updated Stamp Style */}
-                    <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center text-white mb-2 shadow-md">
+                    <div className="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center text-white mb-2 shadow-xl border-2 border-emerald-400/30">
                         <span className="text-sm font-bold">تصدیق شدہ</span>
                     </div>
-                    <p className="text-sm text-emerald-900 font-bold italic">
+                    <p className="text-sm text-emerald-400 font-bold italic">
                         "واللہ اعلم بالصواب"
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-slate-400">
                         (اللہ ہی بہتر جاننے والا ہے)
                     </p>
                 </div>

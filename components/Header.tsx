@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppSection } from '../types';
-import { Menu, X, Home, Clock, Calculator, Stethoscope, Watch, Star, Moon, Shield, FileText, Phone, BookOpen, CalendarDays, Settings } from 'lucide-react';
+import { Menu, X, Home, Clock, Calculator, Stethoscope, Watch, Star, Moon, Shield, FileText, Phone, BookOpen, Settings, Sprout, Sparkles } from 'lucide-react';
 
 interface HeaderProps {
   currentSection: AppSection;
@@ -40,16 +40,15 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
 
   const menuItems = [
     { id: AppSection.Home, label: 'ہوم (Home)', icon: Home },
-    { id: AppSection.Calendar, label: 'کیلنڈر (Calendar)', icon: CalendarDays },
+    { id: AppSection.UnaniHealth, label: 'طبِ یونانی و صحت', icon: Sprout },
+    { id: AppSection.Documents, label: 'رپورٹ ریڈر', icon: FileText },
     { id: AppSection.PrayerTimes, label: 'اوقاتِ نماز', icon: Clock },
     { id: AppSection.Numerology, label: 'علم الاعداد', icon: Calculator },
-    { id: AppSection.Wazaif, label: 'استخارہ', icon: BookOpen },
-    { id: AppSection.Medical, label: 'امراض کی تشخیص', icon: Stethoscope },
+    { id: AppSection.Wazaif, label: 'استخارہ', icon: Sparkles },
     { id: AppSection.TimeScience, label: 'علم الساعات', icon: Watch },
     { id: AppSection.Horoscope, label: 'زائچہ و نجوم', icon: Star },
     { id: AppSection.Spiritual, label: 'روحانی رہنمائی', icon: Moon },
     { id: AppSection.BlackMagic, label: 'کالا جادو', icon: Shield },
-    { id: AppSection.Documents, label: 'دستاویز ریڈر', icon: FileText },
     { id: AppSection.Contact, label: 'رابطہ', icon: Phone },
     { id: AppSection.Settings, label: 'ترتیبات (Settings)', icon: Settings },
   ];
@@ -125,7 +124,6 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
                             className="w-full flex items-center gap-4 p-3.5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md hover:border-emerald-200 hover:bg-emerald-50/50 active:scale-[0.98] transition-all text-right group"
                         >
                             <div className="p-2.5 bg-emerald-50 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-colors text-emerald-600 shadow-inner border border-emerald-100">
-                                {/* Added conditional pulse animation for PrayerTimes */}
                                 <item.icon className={`w-5 h-5 ${item.id === AppSection.PrayerTimes ? 'animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]' : ''}`} />
                             </div>
                             <span className="font-bold text-lg text-gray-700 group-hover:text-emerald-900">{item.label}</span>

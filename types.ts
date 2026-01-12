@@ -1,7 +1,5 @@
-
 export enum AppSection {
   Home = 'Home',
-  Calendar = 'Calendar',
   PrayerTimes = 'PrayerTimes',
   Numerology = 'Numerology',
   TimeScience = 'TimeScience',
@@ -9,8 +7,8 @@ export enum AppSection {
   Spiritual = 'Spiritual',
   Wazaif = 'Wazaif',
   BlackMagic = 'BlackMagic',
-  Medical = 'Medical',
   Documents = 'Documents',
+  UnaniHealth = 'UnaniHealth',
   Contact = 'Contact',
   Settings = 'Settings'
 }
