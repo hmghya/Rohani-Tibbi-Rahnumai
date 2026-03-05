@@ -2,7 +2,11 @@
 import { GoogleGenAI, GenerateContentResponse, HarmCategory, HarmBlockThreshold } from "@google/genai";
 
 const getAiClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!apiKey) {
+    console.warn("API Key is missing. Please set GEMINI_API_KEY or API_KEY in your environment.");
+  }
+  return new GoogleGenAI({ apiKey: apiKey || "" });
 };
 
 const SYSTEM_INSTRUCTION = `
