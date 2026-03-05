@@ -52,9 +52,9 @@ const to12Hour = (time24: string) => {
 
 // --- Common Components ---
 const BackButton = ({ onClick }: { onClick: () => void }) => (
-  <div className="flex justify-start mb-6 no-print">
-    <button onClick={onClick} className="flex items-center gap-2 bg-white dark:bg-slate-800 text-emerald-800 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900 px-5 py-2.5 rounded-2xl shadow-sm hover:shadow-md hover:bg-emerald-50 dark:hover:bg-slate-700 transition-all font-bold group">
-      <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /> واپس ہوم پر جائیں
+  <div className="flex justify-start mb-4 no-print">
+    <button onClick={onClick} className="flex items-center gap-2 bg-white dark:bg-slate-800 text-emerald-800 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900 px-4 py-2 rounded-xl shadow-sm hover:shadow-md hover:bg-emerald-50 dark:hover:bg-slate-700 transition-all font-bold group text-sm">
+      <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /> واپس ہوم پر جائیں
     </button>
   </div>
 );
@@ -104,13 +104,13 @@ const VoiceInput: React.FC<{ value: string; onChange: (v: string) => void; place
 
 export const UnaniHealthSection = ({ onBack }: SectionProps) => {
   return (
-    <div className="pb-10">
+    <div className="pb-8">
       <BackButton onClick={onBack} />
       <GeneralAISection 
         title="طبِ یونانی و صحت" 
         icon={Sprout} 
         colorClass="border-emerald-600" 
-        promptContext="آپ ایک تجربہ کار ماہرِ طبِ یونانی (حکیم) اور ہیلتھ کنسلٹنٹ ہیں۔ صارف کے صحت، جڑی بوٹیوں، طبِ یونانی کے علاج، اور صحت مند طرزِ زندگی سے متعلق سوالات کا تفصیلی اور مستند جواب اردو میں دیں۔ جواب میں گھریلو ٹوٹکے، احتیاطی تدابیر اور طبِ قدیم کے اصولوں کو مدنظر رکھیں۔" 
+        promptContext="آپ ایک تجربہ کار ماہرِ طبِ یونانی (حکیم) اور ہیلتھ کنسلٹنٹ ہیں۔ صارف اپنی علامات بتائے گا، آپ کو ان علامات کی روشنی میں 3 سے 5 ممکنہ امراض کی فہرست دینی ہے، پھر سب سے قوی مرض کی تشخیص کرنی ہے اور اس کا تفصیلی علاج (طبِ یونانی مرکبات، جڑی بوٹیاں، روغن، حجامہ، اروما تھراپی، ہومیو پیتھک، ایلو پیتھک، ٹیسٹ اور پرہیز) فراہم کرنا ہے۔" 
         onBack={null} 
         hideBack 
       />
@@ -121,54 +121,100 @@ export const UnaniHealthSection = ({ onBack }: SectionProps) => {
 export const NumerologySection = ({ onBack }: SectionProps) => {
     const [name, setName] = useState('');
     const [motherName, setMotherName] = useState('');
+    const [fatherName, setFatherName] = useState('');
+    const [spouseName, setSpouseName] = useState('');
+    const [friendName, setFriendName] = useState('');
+    const [businessName, setBusinessName] = useState('');
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<string | null>(null);
-    const [totals, setTotals] = useState({ name: 0, mother: 0 });
+    const [totals, setTotals] = useState<Record<string, number>>({});
 
     const handleCalculate = async () => {
         if (!name.trim()) return;
+        
         const nTotal = calculateAbjad(name);
         const mTotal = calculateAbjad(motherName);
-        setTotals({ name: nTotal, mother: mTotal });
+        const fTotal = calculateAbjad(fatherName);
+        const sTotal = calculateAbjad(spouseName);
+        const frTotal = calculateAbjad(friendName);
+        const bTotal = calculateAbjad(businessName);
+
+        setTotals({ 
+            name: nTotal, 
+            mother: mTotal, 
+            father: fTotal, 
+            spouse: sTotal, 
+            friend: frTotal, 
+            business: bTotal 
+        });
+
         setLoading(true);
-        const analysis = await getNumerologyAnalysis(name, motherName, nTotal + mTotal);
+        
+        const prompt = `آپ علم الاعداد (ابجد قمری) کے ماہر ہیں۔ درج ذیل معلومات کی روشنی میں تفصیلی تجزیہ کریں:
+صارف کا نام: ${name} (اعداد: ${nTotal})
+والدہ کا نام: ${motherName || 'نامعلوم'} (اعداد: ${mTotal})
+والد کا نام: ${fatherName || 'نامعلوم'} (اعداد: ${fTotal})
+شریک حیات کا نام: ${spouseName || 'نامعلوم'} (اعداد: ${sTotal})
+دوست کا نام: ${friendName || 'نامعلوم'} (اعداد: ${frTotal})
+کاروبار کا نام: ${businessName || 'نامعلوم'} (اعداد: ${bTotal})
+
+ان تمام اعداد کی روشنی میں شخصیت، مستقبل، موافق رنگ، پتھر، دن، اور کاروباری و ازدواجی زندگی کا گہرا تجزیہ اردو میں فراہم کریں۔`;
+        
+        const analysis = await generateSpiritualResponse(prompt);
         setResult(analysis);
         setLoading(false);
     };
 
     return (
-        <div className="max-w-3xl mx-auto pb-10">
+        <div className="max-w-xl mx-auto pb-8">
             <BackButton onClick={onBack} />
-            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl p-8 border border-emerald-100 dark:border-slate-800">
-                <div className="flex items-center gap-5 mb-10">
-                    <div className="p-5 bg-emerald-100 dark:bg-emerald-900/30 rounded-3xl text-emerald-600 dark:text-emerald-400 shadow-inner"><Calculator size={40} /></div>
+            <div className="bg-white dark:bg-slate-900 rounded-[1rem] shadow-lg p-5 border border-emerald-100 dark:border-slate-800">
+                <div className="flex items-center gap-3 mb-5">
+                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl text-emerald-600 dark:text-emerald-400 shadow-inner"><Calculator size={24} /></div>
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-800 dark:text-white ur-text">علم الاعداد (ابجد قمری)</h2>
-                        <p className="text-gray-500 dark:text-slate-400 ur-text">نام کے اعداد کی روشنی میں شخصیت اور مستقبل کا گہرا تجزیہ</p>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-white ur-text leading-tight">علم الاعداد (ابجد قمری)</h2>
+                        <p className="text-[10px] text-gray-500 dark:text-slate-400 ur-text">نام کے اعداد کی روشنی میں شخصیت اور مستقبل کا گہرا تجزیہ</p>
                     </div>
                 </div>
-                <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-right">
                     <div className="group">
-                        <label className="block text-right mb-2 font-bold text-gray-700 dark:text-slate-300 mr-2 group-focus-within:text-emerald-600 transition-colors ur-text">صارف کا نام (اردو میں)</label>
-                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full h-16 px-6 rounded-2xl border-2 border-gray-100 dark:border-slate-800 focus:border-emerald-500 outline-none text-right text-xl shadow-sm focus:ring-4 focus:ring-emerald-500/5 transition-all dark:bg-slate-950 dark:text-white" placeholder="مثلاً: محمد احمد" />
+                        <label className="block mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">صارف کا نام (اردو میں)</label>
+                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-emerald-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="مثلاً: محمد احمد" />
                     </div>
                     <div className="group">
-                        <label className="block text-right mb-2 font-bold text-gray-700 dark:text-slate-300 mr-2 group-focus-within:text-emerald-600 transition-colors ur-text">والدہ کا نام (اردو میں)</label>
-                        <input type="text" value={motherName} onChange={(e) => setMotherName(e.target.value)} className="w-full h-16 px-6 rounded-2xl border-2 border-gray-100 dark:border-slate-800 focus:border-emerald-500 outline-none text-right text-xl shadow-sm focus:ring-4 focus:ring-emerald-500/5 transition-all dark:bg-slate-950 dark:text-white" placeholder="مثلاً: مریم بی بی" />
+                        <label className="block mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">والدہ کا نام (اردو میں)</label>
+                        <input type="text" value={motherName} onChange={(e) => setMotherName(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-emerald-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="مثلاً: مریم بی بی" />
                     </div>
-                    <button onClick={handleCalculate} disabled={loading || !name} className="w-full py-5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-3xl font-bold text-xl shadow-xl shadow-emerald-200 dark:shadow-none flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50 transition-all ur-text">
-                        {loading ? <Loader2 className="animate-spin" size={24} /> : <Sparkles size={24} />} اعداد نکالیں اور تجزیہ دیکھیں
-                    </button>
+                    <div className="group">
+                        <label className="block mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">والد کا نام (اختیاری)</label>
+                        <input type="text" value={fatherName} onChange={(e) => setFatherName(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-emerald-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="والد کا نام" />
+                    </div>
+                    <div className="group">
+                        <label className="block mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">شریک حیات کا نام (اختیاری)</label>
+                        <input type="text" value={spouseName} onChange={(e) => setSpouseName(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-emerald-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="شریک حیات کا نام" />
+                    </div>
+                    <div className="group">
+                        <label className="block mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">دوست کا نام (اختیاری)</label>
+                        <input type="text" value={friendName} onChange={(e) => setFriendName(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-emerald-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="دوست کا نام" />
+                    </div>
+                    <div className="group">
+                        <label className="block mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">کاروبار کا نام (اختیاری)</label>
+                        <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-emerald-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="کاروبار کا نام" />
+                    </div>
                 </div>
+                <button onClick={handleCalculate} disabled={loading || !name} className="w-full py-2.5 mt-5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl font-bold text-base shadow-md active:scale-95 transition-all ur-text flex items-center justify-center gap-2">
+                    {loading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />} اعداد نکالیں اور تجزیہ دیکھیں
+                </button>
+                
                 {result && !loading && (
-                    <div className="mt-10 p-8 bg-emerald-50 dark:bg-emerald-900/10 rounded-[2rem] border-2 border-emerald-100 dark:border-emerald-900 shadow-inner">
-                        <div className="flex justify-between text-xl font-bold mb-6 text-emerald-800 dark:text-emerald-400">
-                            <span className="bg-white dark:bg-slate-800 px-5 py-2 rounded-xl border border-emerald-100 dark:border-slate-700 shadow-sm">والدہ کے اعداد: {totals.mother}</span>
-                            <span className="bg-white dark:bg-slate-800 px-5 py-2 rounded-xl border border-emerald-100 dark:border-slate-700 shadow-sm">نام کے اعداد: {totals.name}</span>
-                        </div>
-                        <div className="text-center">
-                            <span className="text-gray-500 dark:text-slate-400 text-sm block mb-1 ur-text">مجموعی اعداد</span>
-                            <span className="text-5xl font-black text-emerald-700 dark:text-emerald-400 drop-shadow-sm">{totals.name + totals.mother}</span>
+                    <div className="mt-5 p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border-2 border-emerald-100 dark:border-emerald-900 shadow-inner">
+                        <div className="grid grid-cols-2 gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-400">
+                            <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-emerald-100 dark:border-slate-700 shadow-sm text-center">نام: {totals.name}</div>
+                            <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-emerald-100 dark:border-slate-700 shadow-sm text-center">والدہ: {totals.mother}</div>
+                            {totals.father > 0 && <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-emerald-100 dark:border-slate-700 shadow-sm text-center">والد: {totals.father}</div>}
+                            {totals.spouse > 0 && <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-emerald-100 dark:border-slate-700 shadow-sm text-center">شریک حیات: {totals.spouse}</div>}
+                            {totals.friend > 0 && <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-emerald-100 dark:border-slate-700 shadow-sm text-center">دوست: {totals.friend}</div>}
+                            {totals.business > 0 && <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-emerald-100 dark:border-slate-700 shadow-sm text-center">کاروبار: {totals.business}</div>}
                         </div>
                     </div>
                 )}
@@ -240,41 +286,41 @@ export const BlackMagicSection = ({ onBack }: SectionProps) => {
     };
 
     return (
-        <div className="max-w-3xl mx-auto pb-10">
+        <div className="max-w-2xl mx-auto pb-8">
             <BackButton onClick={onBack} />
-            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl p-8 border border-red-100 dark:border-red-900/30">
-                <div className="flex items-center gap-5 mb-10">
-                    <div className="p-5 bg-red-100 dark:bg-red-900/20 rounded-3xl text-red-600 dark:text-red-400 shadow-inner"><Shield size={40} /></div>
+            <div className="bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-lg p-6 border border-red-100 dark:border-red-900/30">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-2xl text-red-600 dark:text-red-400 shadow-inner"><Shield size={32} /></div>
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-800 dark:text-white ur-text">روحانی تشخیص (جادو و نظرِ بد)</h2>
-                        <p className="text-gray-500 dark:text-slate-400 ur-text">نام اور علامات کی روشنی میں علمی و حسابی تشخیص</p>
+                        <h2 className="text-2xl font-bold text-gray-800 dark:text-white ur-text">روحانی تشخیص (جادو و نظرِ بد)</h2>
+                        <p className="text-sm text-gray-500 dark:text-slate-400 ur-text">نام اور علامات کی روشنی میں علمی و حسابی تشخیص</p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 text-right">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-right">
                     <div className="group">
-                        <label className="block text-right mb-2 font-bold text-gray-700 dark:text-slate-300 mr-2 group-focus-within:text-red-600 transition-colors ur-text">صارف کا نام (اردو میں)</label>
-                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full h-14 px-5 rounded-2xl border-2 border-gray-100 dark:border-slate-800 focus:border-red-500 outline-none text-right text-lg transition-all dark:bg-slate-950 dark:text-white" placeholder="محمد احمد" />
+                        <label className="block text-right mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 group-focus-within:text-red-600 transition-colors ur-text text-sm">صارف کا نام (اردو میں)</label>
+                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full h-12 px-4 rounded-xl border-2 border-gray-100 dark:border-slate-800 focus:border-red-500 outline-none text-right text-lg transition-all dark:bg-slate-950 dark:text-white" placeholder="محمد احمد" />
                     </div>
                     <div className="group">
-                        <label className="block text-right mb-2 font-bold text-gray-700 dark:text-slate-300 mr-2 group-focus-within:text-red-600 transition-colors ur-text">والدہ کا نام (اردو میں)</label>
-                        <input type="text" value={motherName} onChange={(e) => setMotherName(e.target.value)} className="w-full h-14 px-5 rounded-2xl border-2 border-gray-100 dark:border-slate-800 focus:border-red-500 outline-none text-right text-lg transition-all dark:bg-slate-950 dark:text-white" placeholder="مریم بی بی" />
+                        <label className="block text-right mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 group-focus-within:text-red-600 transition-colors ur-text text-sm">والدہ کا نام (اردو میں)</label>
+                        <input type="text" value={motherName} onChange={(e) => setMotherName(e.target.value)} className="w-full h-12 px-4 rounded-xl border-2 border-gray-100 dark:border-slate-800 focus:border-red-500 outline-none text-right text-lg transition-all dark:bg-slate-950 dark:text-white" placeholder="مریم بی بی" />
                     </div>
                     <div className="group md:col-span-2">
-                        <label className="block text-right mb-2 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text">دن کا نام</label>
-                        <select value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)} className="w-full h-14 px-5 rounded-2xl border-2 border-gray-100 dark:border-slate-800 focus:border-red-500 outline-none text-right text-lg transition-all appearance-none cursor-pointer dark:bg-slate-950 dark:text-white">
+                        <label className="block text-right mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-sm">دن کا نام</label>
+                        <select value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)} className="w-full h-12 px-4 rounded-xl border-2 border-gray-100 dark:border-slate-800 focus:border-red-500 outline-none text-right text-lg transition-all appearance-none cursor-pointer dark:bg-slate-950 dark:text-white">
                             {urduDays.map(d => <option key={d} value={d}>{d}</option>)}
                         </select>
                     </div>
                 </div>
 
-                <div className="mb-6">
-                    <h3 className="text-right font-black mb-4 text-gray-800 dark:text-slate-200 ur-text">علامات منتخب کریں:</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="mb-4">
+                    <h3 className="text-right font-black mb-3 text-gray-800 dark:text-slate-200 ur-text text-base">علامات منتخب کریں:</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {symptomsList.map(s => (
-                            <button key={s} onClick={() => toggleSymptom(s)} className={`p-5 rounded-2xl border-2 transition-all text-right font-bold text-lg flex items-center justify-between gap-3 ur-text ${selectedSymptoms.includes(s) ? 'border-red-500 bg-red-50 dark:bg-red-900/10 text-red-900 dark:text-red-400 shadow-md shadow-red-100 dark:shadow-none' : 'border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/20 hover:border-red-200 text-gray-600 dark:text-slate-400'}`}>
-                                <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedSymptoms.includes(s) ? 'bg-red-500 border-red-500 text-white' : 'border-gray-300 dark:border-slate-600'}`}>
-                                    {selectedSymptoms.includes(s) && <Check size={14} />}
+                            <button key={s} onClick={() => toggleSymptom(s)} className={`p-3 rounded-xl border-2 transition-all text-right font-bold text-base flex items-center justify-between gap-2 ur-text ${selectedSymptoms.includes(s) ? 'border-red-500 bg-red-50 dark:bg-red-900/10 text-red-900 dark:text-red-400 shadow-md shadow-red-100 dark:shadow-none' : 'border-gray-50 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/20 hover:border-red-200 text-gray-600 dark:text-slate-400'}`}>
+                                <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedSymptoms.includes(s) ? 'bg-red-500 border-red-500 text-white' : 'border-gray-300 dark:border-slate-600'}`}>
+                                    {selectedSymptoms.includes(s) && <Check size={12} />}
                                 </span>
                                 {s}
                             </button>
@@ -282,8 +328,8 @@ export const BlackMagicSection = ({ onBack }: SectionProps) => {
                     </div>
                 </div>
 
-                <button onClick={handleDiagnose} disabled={loading || !name} className="w-full py-5 bg-gradient-to-r from-red-700 to-red-900 text-white rounded-3xl font-bold text-xl shadow-xl shadow-red-200 dark:shadow-none flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50 transition-all ur-text">
-                    {loading ? <Loader2 className="animate-spin" size={24} /> : <Ghost size={24} />} حسابی و روحانی معائنہ کریں
+                <button onClick={handleDiagnose} disabled={loading || !name} className="w-full py-4 bg-gradient-to-r from-red-700 to-red-900 text-white rounded-2xl font-bold text-lg shadow-lg shadow-red-200 dark:shadow-none flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 transition-all ur-text">
+                    {loading ? <Loader2 className="animate-spin" size={20} /> : <Ghost size={20} />} حسابی و روحانی معائنہ کریں
                 </button>
                 <GenericResult loading={loading} result={result} title="حسابی و روحانی تشخیص کی مفصل رپورٹ" />
             </div>
@@ -315,40 +361,40 @@ export const DocumentSection = ({ onBack }: SectionProps) => {
     };
 
     return (
-        <div className="max-w-xl mx-auto pb-10">
+        <div className="max-w-xl mx-auto pb-8">
             <BackButton onClick={onBack} />
-            <div className="bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-xl p-5 border border-blue-100 dark:border-slate-800">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400 shadow-inner">
-                        <FileText size={28} />
+            <div className="bg-white dark:bg-slate-900 rounded-[1rem] shadow-lg p-4 border border-blue-100 dark:border-slate-800">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400 shadow-inner">
+                        <FileText size={24} />
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-gray-800 dark:text-white ur-text leading-tight">میڈیکل رپورٹ ریڈر</h2>
-                        <p className="text-xs text-gray-500 dark:text-slate-400 ur-text">خون کے ٹیسٹ یا ایکس رے رپورٹ اپلوڈ کریں</p>
+                        <h2 className="text-lg font-bold text-gray-800 dark:text-white ur-text leading-tight">میڈیکل رپورٹ ریڈر</h2>
+                        <p className="text-[10px] text-gray-500 dark:text-slate-400 ur-text">خون کے ٹیسٹ یا ایکس رے رپورٹ اپلوڈ کریں</p>
                     </div>
                 </div>
                 
-                <div className="border-2 border-dashed border-gray-100 dark:border-slate-800 rounded-[1rem] p-4 text-center mb-4 hover:border-blue-300 hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition-all cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
+                <div className="border-2 border-dashed border-gray-100 dark:border-slate-800 rounded-[0.75rem] p-3 text-center mb-3 hover:border-blue-300 hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition-all cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
                     {image ? (
                         <div className="relative inline-block">
-                            <img src={image} className="max-h-40 mx-auto rounded-xl shadow-md border-2 border-white dark:border-slate-800" alt="Report" />
-                            <button onClick={(e) => { e.stopPropagation(); setImage(null); }} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors">
-                                <X size={14} />
+                            <img src={image} className="max-h-32 mx-auto rounded-lg shadow-md border-2 border-white dark:border-slate-800" alt="Report" />
+                            <button onClick={(e) => { e.stopPropagation(); setImage(null); }} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors">
+                                <X size={12} />
                             </button>
                         </div>
                     ) : (
-                        <div className="py-2">
-                            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/10 text-blue-300 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:scale-110 group-hover:text-blue-500 transition-all shadow-inner">
-                                <Upload size={24} />
+                        <div className="py-1">
+                            <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/10 text-blue-300 rounded-full flex items-center justify-center mx-auto mb-1.5 group-hover:scale-110 group-hover:text-blue-500 transition-all shadow-inner">
+                                <Upload size={20} />
                             </div>
-                            <p className="text-sm font-bold text-gray-400 dark:text-slate-500 group-hover:text-blue-600 transition-colors ur-text">رپورٹ کی تصویر منتخب کریں</p>
+                            <p className="text-xs font-bold text-gray-400 dark:text-slate-500 group-hover:text-blue-600 transition-colors ur-text">رپورٹ کی تصویر منتخب کریں</p>
                         </div>
                     )}
                     <input type="file" ref={fileInputRef} onChange={handleImageUpload} hidden accept="image/*" />
                 </div>
 
-                <button onClick={handleAnalyze} disabled={loading || !image} className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl font-bold text-lg shadow-md flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 transition-all ur-text">
-                    {loading ? <Loader2 className="animate-spin" size={20} /> : <Search size={20} />} خلاصہ دیکھیں
+                <button onClick={handleAnalyze} disabled={loading || !image} className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg font-bold text-base shadow-md flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 transition-all ur-text">
+                    {loading ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />} خلاصہ دیکھیں
                 </button>
                 
                 <GenericResult loading={loading} result={result} title="میڈیکل رپورٹ کا خلاصہ" />
@@ -365,28 +411,28 @@ export const WazaifSection = ({ onBack }: SectionProps) => {
     ];
 
     return (
-        <div className="max-w-3xl mx-auto pb-10">
+        <div className="max-w-2xl mx-auto pb-8">
             <BackButton onClick={onBack} />
-            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl p-8 border border-teal-100 dark:border-slate-800">
-                <div className="flex items-center gap-5 mb-10">
-                    <div className="p-5 bg-teal-100 dark:bg-teal-900/20 rounded-3xl text-teal-600 dark:text-teal-400 shadow-inner"><BookOpen size={40} /></div>
+            <div className="bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-lg p-6 border border-teal-100 dark:border-slate-800">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="p-3 bg-teal-100 dark:bg-teal-900/20 rounded-2xl text-teal-600 dark:text-teal-400 shadow-inner"><BookOpen size={32} /></div>
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-800 dark:text-white ur-text">وظائف و استخارہ</h2>
-                        <p className="text-gray-500 dark:text-slate-400 ur-text">مشکلات کے حل کے لیے مستند وظائف اور رہنمائی</p>
+                        <h2 className="text-2xl font-bold text-gray-800 dark:text-white ur-text">وظائف و استخارہ</h2>
+                        <p className="text-sm text-gray-500 dark:text-slate-400 ur-text">مشکلات کے حل کے لیے مستند وظائف اور رہنمائی</p>
                     </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4 mb-12">
+                <div className="grid grid-cols-1 gap-3 mb-8">
                     {wazaif.map((w, i) => (
-                        <div key={i} className="p-6 bg-gradient-to-l from-teal-50 to-white dark:from-slate-800 dark:to-slate-900 rounded-[2rem] border border-teal-100 dark:border-slate-800 shadow-sm flex items-center gap-6 text-right group hover:shadow-md transition-all">
-                            <div className="p-4 bg-white dark:bg-slate-700 text-teal-600 dark:text-teal-400 rounded-2xl shadow-sm group-hover:scale-110 transition-transform"><w.icon size={28} /></div>
+                        <div key={i} className="p-4 bg-gradient-to-l from-teal-50 to-white dark:from-slate-800 dark:to-slate-900 rounded-[1.25rem] border border-teal-100 dark:border-slate-800 shadow-sm flex items-center gap-4 text-right group hover:shadow-md transition-all">
+                            <div className="p-3 bg-white dark:bg-slate-700 text-teal-600 dark:text-teal-400 rounded-xl shadow-sm group-hover:scale-110 transition-transform"><w.icon size={24} /></div>
                             <div className="flex-grow">
-                                <h3 className="font-black text-teal-900 dark:text-teal-300 text-xl mb-1 ur-text">{w.title}</h3>
-                                <p className="text-teal-700 dark:text-slate-400 text-lg leading-relaxed ur-text">{w.desc}</p>
+                                <h3 className="font-black text-teal-900 dark:text-teal-300 text-lg mb-0.5 ur-text">{w.title}</h3>
+                                <p className="text-teal-700 dark:text-slate-400 text-base leading-relaxed ur-text">{w.desc}</p>
                             </div>
                         </div>
                     ))}
                 </div>
-                <div className="border-t-2 border-dashed border-teal-100 dark:border-slate-800 pt-10">
+                <div className="border-t-2 border-dashed border-teal-100 dark:border-slate-800 pt-8">
                     <GeneralAISection title="آن لائن استخارہ و رہنمائی" icon={Sparkles} colorClass="border-teal-600" promptContext="صارف اپنے کسی شرعی یا دنیاوی معاملے میں استخارہ اور رہنمائی چاہتا ہے۔ اسے سنت کے مطابق استخارہ کا طریقہ بتائیں اور اس کے مخصوص مسئلے پر دعا اور مشورہ دیں۔" onBack={null} hideBack />
                 </div>
             </div>
@@ -394,276 +440,10 @@ export const WazaifSection = ({ onBack }: SectionProps) => {
     );
 };
 
-export const PrayerTimesSection = ({ onBack }: SectionProps) => {
-    const [loading, setLoading] = useState(true);
-    const [times, setTimes] = useState<any>(null);
-    const [locationName, setLocationName] = useState('مقامی جگہ تلاش کی جا رہی ہے...');
-    const [userCoords, setUserCoords] = useState<{lat: number, lng: number} | null>(null);
-    const [nearbyMosques, setNearbyMosques] = useState<any[]>([]);
-    const [selectedMosque, setSelectedMosque] = useState<any>(null);
-    const [routeInfo, setRouteInfo] = useState<{walk: string, drive: string} | null>(null);
-    const [mapError, setMapError] = useState<string | null>(null);
-    
-    const mapRef = useRef<HTMLDivElement>(null);
-    const mapInstance = useRef<any>(null);
-
-    useEffect(() => {
-        // Global handler for Google Maps Auth Failures (Billing/Authentication)
-        (window as any).gm_authFailure = () => {
-          setMapError("گوگل میپس کی بلنگ (Billing) فعال نہیں ہے یا اے پی آئی کی (API Key) میں مسئلہ ہے۔ براہ کرم گوگل کنسول چیک کریں۔");
-        };
-
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const { latitude, longitude } = pos.coords;
-                setUserCoords({lat: latitude, lng: longitude});
-                try {
-                    const response = await fetch(`https://api.aladhan.com/v1/timings?latitude=${latitude}&longitude=${longitude}&method=1`);
-                    const data = await response.json();
-                    if (data.code === 200) {
-                        setTimes(data.data.timings);
-                        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ur`);
-                        const geoData = await geoRes.json();
-                        setLocationName(geoData.address.city || geoData.address.town || geoData.address.village || 'آپ کا علاقہ');
-                    }
-                } catch (err) {
-                    setLocationName('لوکیشن ایرر');
-                } finally {
-                    setLoading(false);
-                }
-            }, () => {
-                setLocationName('لوکیشن کی اجازت نہیں ملی');
-                setLoading(false);
-            });
-        }
-    }, []);
-
-    useEffect(() => {
-        if (!loading && userCoords && mapRef.current && (window as any).google) {
-            try {
-                const google = (window as any).google;
-                const map = new google.maps.Map(mapRef.current, {
-                    center: userCoords,
-                    zoom: 15,
-                    disableDefaultUI: true,
-                    zoomControl: true,
-                    styles: [
-                        { "featureType": "poi.place_of_worship", "elementType": "labels.icon", "stylers": [{ "visibility": "on" }] }
-                    ]
-                });
-                mapInstance.current = map;
-
-                new google.maps.Marker({
-                    position: userCoords,
-                    map: map,
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 10,
-                        fillColor: "#3B82F6",
-                        fillOpacity: 1,
-                        strokeWeight: 2,
-                        strokeColor: "#FFFFFF",
-                    },
-                    title: "آپ کی جگہ"
-                });
-
-                const service = new google.maps.places.PlacesService(map);
-                service.nearbySearch({
-                    location: userCoords,
-                    radius: 2000,
-                    type: 'mosque'
-                }, (results: any, status: any) => {
-                    if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-                        setNearbyMosques(results);
-                        results.forEach((place: any) => {
-                            const marker = new google.maps.Marker({
-                                position: place.geometry.location,
-                                map: map,
-                                icon: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
-                                title: place.name
-                            });
-
-                            marker.addListener('click', () => {
-                                setSelectedMosque(place);
-                                calculateRoute(place.geometry.location);
-                            });
-                        });
-                    } else if (status === 'REQUEST_DENIED') {
-                        setMapError("پلیسز اے پی آئی (Places API) تک رسائی مسترد کر دی گئی ہے۔ براہ کرم کنسول میں 'Places API' اور 'Places API (New)' فعال کریں۔");
-                    }
-                });
-            } catch (err) {
-                console.error("Map initialization failed", err);
-                setMapError("میپ لوڈ کرنے میں فنی خرابی پیش آئی ہے۔");
-            }
-        }
-    }, [loading, userCoords]);
-
-    const calculateRoute = (dest: any) => {
-        const google = (window as any).google;
-        const ds = new google.maps.DirectionsService();
-        
-        ds.route({
-            origin: userCoords,
-            destination: dest,
-            travelMode: google.maps.TravelMode.WALKING
-        }, (res: any, status: any) => {
-            if (status === 'OK') {
-                const walkTime = res.routes[0].legs[0].duration.text;
-                ds.route({
-                    origin: userCoords,
-                    destination: dest,
-                    travelMode: google.maps.TravelMode.DRIVING
-                }, (resD: any, statusD: any) => {
-                    if (statusD === 'OK') {
-                        setRouteInfo({
-                            walk: walkTime.replace('mins', 'منٹ').replace('hours', 'گھنتوں'),
-                            drive: resD.routes[0].legs[0].duration.text.replace('mins', 'منٹ').replace('hours', 'گھنتوں')
-                        });
-                    }
-                });
-            }
-        });
-    };
-
-    const fardPrayers = [
-        { key: 'Fajr', label: 'فجر' },
-        { key: 'Dhuhr', label: 'ظہر' },
-        { key: 'Asr', label: 'عصر' },
-        { key: 'Maghrib', label: 'مغرب' },
-        { key: 'Isha', label: 'عشاء' }
-    ];
-
-    if (loading) return (
-        <div className="max-w-3xl mx-auto py-20 text-center">
-            <Loader2 className="animate-spin mx-auto text-teal-600 mb-6" size={60} />
-            <h2 className="text-2xl font-bold text-teal-900 ur-text">لوکیشن کے مطابق اوقاتِ نماز تلاش کیے جا رہے ہیں...</h2>
-        </div>
-    );
-
-    return (
-        <div className="max-w-6xl mx-auto pb-10">
-            <BackButton onClick={onBack} />
-            
-            <div className="bg-white rounded-[2.5rem] shadow-xl p-8 border border-teal-100 mb-8 overflow-hidden relative">
-                <div className="absolute top-0 right-0 p-10 opacity-5 -mr-10 -mt-10"><Clock size={200} /></div>
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-5">
-                        <div className="p-5 bg-teal-100 rounded-3xl text-teal-600 shadow-inner"><Clock size={40} /></div>
-                        <div>
-                            <h2 className="text-3xl font-black text-gray-800 ur-text">اوقاتِ نماز و قریبی مساجد</h2>
-                            <p className="text-gray-500 font-bold flex items-center gap-2 ur-text">
-                                <MapPin size={16} className="text-teal-600" /> {locationName}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="bg-teal-50 px-6 py-4 rounded-3xl border border-teal-100 text-center md:text-right">
-                        <span className="text-teal-600 text-sm font-bold block mb-1 ur-text">آج کی تاریخ</span>
-                        <span className="text-xl font-black text-teal-900">{new Date().toLocaleDateString('ur-PK', { day:'numeric', month:'long', year:'numeric' })}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                <div className="lg:col-span-4 space-y-6">
-                    <div className="bg-white rounded-[2.5rem] shadow-xl p-6 border border-emerald-100">
-                        <h3 className="text-xl font-black text-emerald-900 mb-6 flex items-center gap-3 border-r-4 border-emerald-500 pr-4 ur-text">
-                            آج کے اوقاتِ نماز
-                        </h3>
-                        <div className="space-y-4">
-                            {fardPrayers.map((p) => (
-                                <div key={p.key} className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-50 flex items-center justify-between">
-                                    <span className="text-xl font-black text-emerald-900 tracking-tighter" dir="ltr">{to12Hour(times?.[p.key])}</span>
-                                    <span className="text-lg font-black text-emerald-800 ur-text">{p.label}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="mt-8 pt-6 border-t border-emerald-100">
-                             <div className="flex items-center justify-between p-3 rounded-xl bg-red-50 text-red-700">
-                                <span className="text-lg font-black tracking-tighter" dir="ltr">{to12Hour(times?.Sunrise)}</span>
-                                <span className="font-bold ur-text">طلوعِ آفتاب</span>
-                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="lg:col-span-8 flex flex-col gap-6">
-                    <div className="bg-white rounded-[2.5rem] shadow-xl overflow-hidden border border-blue-100 flex flex-col h-[500px] relative">
-                        <div className="p-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center z-10">
-                            <h3 className="font-black text-blue-900 flex items-center gap-2 ur-text">
-                                <Globe size={20} /> قریبی مساجد (2 کلومیٹر کے اندر)
-                            </h3>
-                            {nearbyMosques.length > 0 && <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold">{nearbyMosques.length} مساجد ملی ہیں</span>}
-                        </div>
-                        
-                        {mapError ? (
-                            <div className="flex-grow flex flex-col items-center justify-center p-8 text-center bg-gray-50">
-                                <AlertTriangle className="text-red-500 mb-4" size={48} />
-                                <h4 className="text-xl font-black text-red-700 mb-2 ur-text">گوگل میپس میں خرابی</h4>
-                                <p className="text-gray-600 max-w-xs ur-text leading-relaxed">{mapError}</p>
-                                <div className="mt-6 p-4 bg-white border rounded-2xl text-xs text-gray-400 text-right ur-text">
-                                    <strong>حل:</strong> براہ کرم گوگل کلاؤڈ کنسول میں جائیں اور 'Places API (New)' کو فعال کریں اور بلنگ چیک کریں۔
-                                </div>
-                            </div>
-                        ) : (
-                            <div ref={mapRef} className="flex-grow"></div>
-                        )}
-                    </div>
-
-                    {selectedMosque && (
-                        <div className="bg-white rounded-[2.5rem] shadow-2xl p-6 border-2 border-emerald-500 animate-fade-in-up">
-                            <div className="flex flex-col md:flex-row justify-between gap-6">
-                                <div className="flex-grow text-right order-2 md:order-1">
-                                    <h4 className="text-2xl font-black text-emerald-900 mb-2 ur-text">{selectedMosque.name}</h4>
-                                    <p className="text-gray-500 font-bold flex items-center justify-end gap-2 mb-4 ur-text">
-                                        {selectedMosque.vicinity} <MapPin size={16} />
-                                    </p>
-                                    
-                                    <div className="grid grid-cols-2 gap-4 mb-6">
-                                        <div className="p-4 bg-gray-50 rounded-2xl border flex flex-col items-center gap-1">
-                                            <Car className="text-blue-600" />
-                                            <span className="text-xs font-bold text-gray-400 ur-text">گاڑی پر</span>
-                                            <span className="font-black text-gray-800 ur-text">{routeInfo?.drive || '--'}</span>
-                                        </div>
-                                        <div className="p-4 bg-gray-50 rounded-2xl border flex flex-col items-center gap-1">
-                                            <Footprints className="text-emerald-600" />
-                                            <span className="text-xs font-bold text-gray-400 ur-text">پیدل راستہ</span>
-                                            <span className="font-black text-gray-800 ur-text">{routeInfo?.walk || '--'}</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <a 
-                                        href={`https://www.google.com/maps/dir/?api=1&destination=${selectedMosque.geometry.location.lat()},${selectedMosque.geometry.location.lng()}`} 
-                                        target="_blank" 
-                                        className="inline-flex items-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-2xl font-black shadow-lg transition-all ur-text"
-                                    >
-                                        راستہ دکھائیں (Directions) <Navigation2 size={20} />
-                                    </a>
-                                </div>
-                                <div className="w-full md:w-32 h-32 bg-emerald-50 rounded-3xl flex items-center justify-center text-emerald-600 shrink-0 order-1 md:order-2 self-center md:self-start">
-                                    <MapPin size={60} />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    
-                    {!selectedMosque && !mapError && (
-                        <div className="p-10 bg-blue-50/50 rounded-[2.5rem] border border-blue-100 text-center border-dashed">
-                             <Navigation className="mx-auto text-blue-300 mb-4 animate-bounce-slow" size={48} />
-                             <p className="text-blue-900 font-black ur-text text-xl">کسی بھی مسجد پر کلک کریں</p>
-                             <p className="text-blue-600 ur-text">پیدل اور گاڑی کا وقت معلوم کرنے کے لیے نقشے پر مسجد سلیکٹ کریں</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export const SpiritualSection = ({ onBack }: SectionProps) => (
-    <div className="pb-10">
+export const DreamInterpretationSection = ({ onBack }: SectionProps) => (
+    <div className="pb-8">
         <BackButton onClick={onBack} />
-        <GeneralAISection title="روحانی رہنمائی و سوالات" icon={Moon} colorClass="border-emerald-700" promptContext="آپ ایک روحانی مرشد اور عالمِ دین ہیں۔ صارف کے کسی بھی مذہبی, اخلاقی یا روحانی سوال کا قرآن و سنت کی روشنی میں ہمدردانہ جواب دیں۔" onBack={null} hideBack />
+        <GeneralAISection title="خوابوں کی تعبیر" icon={Moon} colorClass="border-emerald-700" promptContext="آپ خوابوں کی تعبیر کے ماہر (معبر) ہیں۔ صارف اپنے خواب کی تفصیل بتائے گا، آپ کو قرآن و سنت اور مستند اسلامی کتب (مثلاً علامہ ابن سیرین) کی روشنی میں اس خواب کی تعبیر بتانی ہے۔ اگر خواب اچھا ہو تو بشارت دیں اور اگر برا ہو تو صدقہ و دعا کی تلقین کریں۔" onBack={null} hideBack />
     </div>
 );
 
@@ -673,74 +453,74 @@ export const ContactSection = ({ onBack }: SectionProps) => {
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(waLinkYaasin)}`;
 
     return (
-        <div className="max-w-3xl mx-auto pb-10">
+        <div className="max-w-2xl mx-auto pb-8">
             <BackButton onClick={onBack} />
-            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl p-10 border border-emerald-100 text-center">
-                <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner animate-bounce-slow">
-                    <MessageSquare size={36} />
+            <div className="bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-lg p-6 border border-emerald-100 text-center">
+                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner animate-bounce-slow">
+                    <MessageSquare size={28} />
                 </div>
-                <h2 className="text-3xl font-black text-gray-800 mb-2 ur-text">رابطہ کی معلومات</h2>
-                <p className="text-gray-500 text-lg mb-10 ur-text">ہم سے براہِ راحت رابطہ کریں</p>
+                <h2 className="text-2xl font-black text-gray-800 mb-1 ur-text">رابطہ کی معلومات</h2>
+                <p className="text-gray-500 text-base mb-8 ur-text">ہم سے براہِ راحت رابطہ کریں</p>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-right mb-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right mb-8">
                     {/* WhatsApp Button Section */}
-                    <div className="p-8 bg-emerald-50 rounded-[2rem] border-2 border-emerald-100 flex flex-col items-center justify-center gap-4 group hover:bg-emerald-100 transition-all shadow-sm">
-                        <div className="p-4 bg-white text-emerald-600 rounded-2xl shadow-sm mb-2 group-hover:scale-110 transition-transform">
-                            <Smartphone size={40} />
+                    <div className="p-6 bg-emerald-50 rounded-[1.5rem] border-2 border-emerald-100 flex flex-col items-center justify-center gap-3 group hover:bg-emerald-100 transition-all shadow-sm">
+                        <div className="p-3 bg-white text-emerald-600 rounded-xl shadow-sm mb-1 group-hover:scale-110 transition-transform">
+                            <Smartphone size={32} />
                         </div>
-                        <h3 className="text-xl font-black text-emerald-900 ur-text">وٹس ایپ میسج</h3>
-                        <p className="text-sm text-emerald-700 font-bold mb-4 ur-text">براہ راست میسج بھیجنے کے لیے کلک کریں</p>
+                        <h3 className="text-lg font-black text-emerald-900 ur-text">وٹس ایپ میسج</h3>
+                        <p className="text-[10px] text-emerald-700 font-bold mb-3 ur-text">براہ راست میسج بھیجنے کے لیے کلک کریں</p>
                         <a 
                             href={waLinkYaasin} 
                             target="_blank" 
-                            className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black shadow-lg transition-all flex items-center justify-center gap-3 ur-text text-xl"
+                            className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black shadow-lg transition-all flex items-center justify-center gap-2 ur-text text-lg"
                         >
-                            واٹس ایپ چیٹ <ExternalLink size={20} />
+                            واٹس ایپ چیٹ <ExternalLink size={18} />
                         </a>
                     </div>
 
                     {/* QR Code Section */}
-                    <div className="p-8 bg-white rounded-[2rem] border-2 border-emerald-100 flex flex-col items-center justify-center gap-4 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-5 text-emerald-900">
-                            <QrCode size={100} />
+                    <div className="p-6 bg-white rounded-[1.5rem] border-2 border-emerald-100 flex flex-col items-center justify-center gap-3 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-3 opacity-5 text-emerald-900">
+                            <QrCode size={80} />
                         </div>
-                        <h3 className="text-xl font-black text-emerald-900 ur-text relative z-10">سکین کریں (QR Code)</h3>
-                        <div className="p-3 bg-white border-4 border-emerald-50 rounded-2xl shadow-inner relative z-10">
+                        <h3 className="text-lg font-black text-emerald-900 ur-text relative z-10">سکین کریں (QR Code)</h3>
+                        <div className="p-2 bg-white border-4 border-emerald-50 rounded-xl shadow-inner relative z-10">
                             <img 
                                 src={qrCodeUrl} 
                                 alt="WhatsApp QR Code" 
-                                className="w-48 h-48 object-contain rounded-lg"
+                                className="w-32 h-32 object-contain rounded-lg"
                                 onError={(e) => {
                                     const target = e.target as HTMLImageElement;
-                                    target.src = 'https://via.placeholder.com/300?text=QR+Code';
+                                    target.src = 'https://via.placeholder.com/200?text=QR+Code';
                                 }}
                             />
                         </div>
-                        <p className="text-xs text-emerald-600 font-bold mt-2 ur-text">موبائل کیمرے سے سکین کریں</p>
+                        <p className="text-[10px] text-emerald-600 font-bold mt-1 ur-text">موبائل کیمرے سے سکین کریں</p>
                     </div>
                 </div>
 
-                <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 text-right">
-                    <h3 className="font-black text-xl text-gray-800 mb-4 flex items-center justify-end gap-2 border-b pb-2 ur-text">ٹیم ممبران <Users size={20}/></h3>
-                    <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-[1.5rem] border border-gray-100 text-right">
+                    <h3 className="font-black text-lg text-gray-800 mb-3 flex items-center justify-end gap-2 border-b pb-1.5 ur-text">ٹیم ممبران <Users size={18}/></h3>
+                    <div className="space-y-3">
                         <a 
                           href={waLinkYaasin} 
                           target="_blank" 
-                          className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm hover:bg-emerald-50 transition-colors group border border-transparent hover:border-emerald-200"
+                          className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm hover:bg-emerald-50 transition-colors group border border-transparent hover:border-emerald-200"
                         >
-                            <span className="text-emerald-700 font-bold ur-text">کہروڑ پکا</span>
-                            <span className="text-gray-800 font-black ur-text flex items-center gap-2 group-hover:text-emerald-800 transition-colors">
-                                حکیم غلام یاسین آرائیں <MessageSquare size={18} className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <span className="text-emerald-700 font-bold ur-text text-sm">کہروڑ پکا</span>
+                            <span className="text-gray-800 font-black ur-text flex items-center gap-2 group-hover:text-emerald-800 transition-colors text-sm">
+                                حکیم غلام یاسین آرائیں <MessageSquare size={16} className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </span>
                         </a>
                         <a 
                           href={waLinkAshfaq} 
                           target="_blank" 
-                          className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm hover:bg-blue-50 transition-colors group border border-transparent hover:border-blue-200"
+                          className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm hover:bg-blue-50 transition-colors group border border-transparent hover:border-blue-200"
                         >
-                            <span className="text-blue-700 font-bold ur-text">خانیوال</span>
-                            <span className="text-gray-800 font-black ur-text flex items-center gap-2 group-hover:text-blue-800 transition-colors">
-                                حاجی اشفاق احمد <MessageSquare size={18} className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <span className="text-blue-700 font-bold ur-text text-sm">خانیوال</span>
+                            <span className="text-gray-800 font-black ur-text flex items-center gap-2 group-hover:text-blue-800 transition-colors text-sm">
+                                حاجی اشفاق احمد <MessageSquare size={16} className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </span>
                         </a>
                     </div>
@@ -768,11 +548,11 @@ export const SettingsSection = ({ onBack }: SectionProps) => {
 
         // Font Size Apply
         const sizeMap: Record<string, string> = {
-            'small': '0.9rem',
-            'normal': '1.1rem',
-            'large': '1.3rem'
+            'small': '0.8rem',
+            'normal': '0.95rem',
+            'large': '1.1rem'
         };
-        document.documentElement.style.fontSize = sizeMap[fontSize] || '1.1rem';
+        document.documentElement.style.fontSize = sizeMap[fontSize] || '0.95rem';
         localStorage.setItem('font-size', fontSize);
     }, [isDark, fontSize]);
 
@@ -787,52 +567,52 @@ export const SettingsSection = ({ onBack }: SectionProps) => {
     };
 
     return (
-        <div className="max-w-3xl mx-auto pb-10">
+        <div className="max-w-2xl mx-auto pb-8">
             <BackButton onClick={onBack} />
-            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl p-8 md:p-10 border border-gray-100 dark:border-slate-800 transition-colors">
-                <div className="flex items-center gap-5 mb-10">
-                    <div className="p-5 bg-gray-100 dark:bg-slate-800 rounded-3xl text-gray-600 dark:text-slate-400 shadow-inner"><SettingsIcon size={40} /></div>
+            <div className="bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-lg p-6 md:p-8 border border-gray-100 dark:border-slate-800 transition-colors">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="p-3 bg-gray-100 dark:bg-slate-800 rounded-2xl text-gray-600 dark:text-slate-400 shadow-inner"><SettingsIcon size={32} /></div>
                     <div>
-                        <h2 className="text-3xl font-black text-gray-800 dark:text-white ur-text">ترتیبات (Settings)</h2>
-                        <p className="text-gray-500 dark:text-slate-400 ur-text">ایپلیکیشن کو اپنی ضرورت کے مطابق ترتیب دیں</p>
+                        <h2 className="text-2xl font-black text-gray-800 dark:text-white ur-text">ترتیبات (Settings)</h2>
+                        <p className="text-sm text-gray-500 dark:text-slate-400 ur-text">ایپلیکیشن کو اپنی ضرورت کے مطابق ترتیب دیں</p>
                     </div>
                 </div>
 
-                <div className="space-y-8">
+                <div className="space-y-6">
                     {/* Dark Mode Toggle */}
-                    <div className="p-6 bg-gray-50 dark:bg-slate-800/50 rounded-[2rem] flex items-center justify-between border border-transparent hover:border-emerald-100 dark:hover:border-slate-700 transition-all">
-                        <div className="flex items-center gap-5">
-                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm transition-colors ${isDark ? 'bg-slate-700 text-yellow-400' : 'bg-white text-emerald-600'}`}>
-                                {isDark ? <Moon size={28}/> : <Sun size={28}/>}
+                    <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-[1.5rem] flex items-center justify-between border border-transparent hover:border-emerald-100 dark:hover:border-slate-700 transition-all">
+                        <div className="flex items-center gap-4">
+                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm transition-colors ${isDark ? 'bg-slate-700 text-yellow-400' : 'bg-white text-emerald-600'}`}>
+                                {isDark ? <Moon size={24}/> : <Sun size={24}/>}
                              </div>
                              <div>
-                                <span className="font-black text-xl text-gray-800 dark:text-white ur-text">نائٹ موڈ (Dark Mode)</span>
-                                <p className="text-sm text-gray-500 dark:text-slate-400 ur-text">آنکھوں کی حفاظت کے لیے ڈارک تھیم</p>
+                                <span className="font-black text-lg text-gray-800 dark:text-white ur-text">نائٹ موڈ (Dark Mode)</span>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 ur-text">آنکھوں کی حفاظت کے لیے ڈارک تھیم</p>
                              </div>
                         </div>
                         <button 
                             onClick={() => setIsDark(!isDark)}
-                            className={`w-16 h-8 rounded-full relative transition-all shadow-inner border ${isDark ? 'bg-emerald-600 border-emerald-700' : 'bg-gray-300 border-gray-200'}`}
+                            className={`w-12 h-6 rounded-full relative transition-all shadow-inner border ${isDark ? 'bg-emerald-600 border-emerald-700' : 'bg-gray-300 border-gray-200'}`}
                         >
-                            <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all ${isDark ? 'right-9' : 'right-1'}`}></div>
+                            <div className={`absolute top-0.5 w-4.5 h-4.5 bg-white rounded-full shadow-md transition-all ${isDark ? 'right-6.5' : 'right-0.5'}`}></div>
                         </button>
                     </div>
 
                     {/* Font Size Selector */}
-                    <div className="p-6 bg-gray-50 dark:bg-slate-800/50 rounded-[2rem] border border-transparent transition-all">
-                        <div className="flex items-center gap-5 mb-6">
-                             <div className="w-14 h-14 bg-white dark:bg-slate-700 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm"><Type size={28}/></div>
+                    <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-[1.5rem] border border-transparent transition-all">
+                        <div className="flex items-center gap-4 mb-4">
+                             <div className="w-12 h-12 bg-white dark:bg-slate-700 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm"><Type size={24}/></div>
                              <div>
-                                <span className="font-black text-xl text-gray-800 dark:text-white ur-text">تحریر کا سائز (Text Size)</span>
-                                <p className="text-sm text-gray-500 dark:text-slate-400 ur-text">پڑھنے میں آسانی کے لیے فونٹ سائز تبدیل کریں</p>
+                                <span className="font-black text-lg text-gray-800 dark:text-white ur-text">تحریر کا سائز (Text Size)</span>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 ur-text">پڑھنے میں آسانی کے لیے فونٹ سائز تبدیل کریں</p>
                              </div>
                         </div>
-                        <div className="flex gap-3 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-gray-100 dark:border-slate-800">
+                        <div className="flex gap-2 bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-gray-100 dark:border-slate-800">
                             {['small', 'normal', 'large'].map((size) => (
                                 <button 
                                     key={size}
                                     onClick={() => setFontSize(size)}
-                                    className={`flex-1 py-3 rounded-xl font-bold transition-all ur-text ${fontSize === size ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-slate-800'}`}
+                                    className={`flex-1 py-2 rounded-lg font-bold transition-all ur-text text-sm ${fontSize === size ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-slate-800'}`}
                                 >
                                     {size === 'small' ? 'چھوٹا' : size === 'normal' ? 'نارمل' : 'بڑا'}
                                 </button>
@@ -841,20 +621,20 @@ export const SettingsSection = ({ onBack }: SectionProps) => {
                     </div>
 
                     {/* Clear Data */}
-                    <div className="p-6 bg-red-50 dark:bg-red-900/10 rounded-[2rem] border border-red-100 dark:border-red-900/30 flex items-center justify-between group">
-                        <div className="flex items-center gap-5">
-                             <div className="w-14 h-14 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center text-red-500 shadow-sm group-hover:rotate-12 transition-transform"><Trash2 size={28}/></div>
+                    <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-[1.5rem] border border-red-100 dark:border-red-900/30 flex items-center justify-between group">
+                        <div className="flex items-center gap-4">
+                             <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-red-500 shadow-sm group-hover:rotate-12 transition-transform"><Trash2 size={24}/></div>
                              <div>
-                                <span className="font-black text-xl text-red-700 dark:text-red-400 ur-text">ڈیٹا صاف کریں</span>
-                                <p className="text-sm text-red-500/70 dark:text-red-400/60 ur-text">تمام محفوظ ترتیبات کو ختم کریں</p>
+                                <span className="font-black text-lg text-red-700 dark:text-red-400 ur-text">ڈیٹا صاف کریں</span>
+                                <p className="text-xs text-red-500/70 dark:text-red-400/60 ur-text">تمام محفوظ ترتیبات کو ختم کریں</p>
                              </div>
                         </div>
                         <button 
                             onClick={handleClearData}
                             disabled={isClearing}
-                            className={`px-8 py-3 bg-red-600 text-white rounded-2xl font-black shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 active:scale-95 transition-all ur-text ${isClearing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`px-6 py-2 bg-red-600 text-white rounded-xl font-black shadow-md shadow-red-200 dark:shadow-none hover:bg-red-700 active:scale-95 transition-all ur-text text-sm ${isClearing ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            {isClearing ? <Loader2 className="animate-spin"/> : 'ڈیلیٹ کریں'}
+                            {isClearing ? <Loader2 className="animate-spin" size={16}/> : 'ڈیلیٹ کریں'}
                         </button>
                     </div>
 
@@ -876,6 +656,8 @@ export const TimeScienceSection = ({ onBack }: SectionProps) => {
     const [name, setName] = useState('');
     const [motherName, setMotherName] = useState('');
     const [dobOrAge, setDobOrAge] = useState('');
+    const [birthTime, setBirthTime] = useState('');
+    const [birthDay, setBirthDay] = useState('');
     const [dayOfQuestion, setDayOfQuestion] = useState(getUrduDay());
     const [question, setQuestion] = useState('');
     const [loading, setLoading] = useState(false);
@@ -890,6 +672,8 @@ export const TimeScienceSection = ({ onBack }: SectionProps) => {
 صارف کا نام: ${name}
 والدہ کا نام: ${motherName || 'نامعلوم'}
 تاریخ پیدائش یا عمر: ${dobOrAge || 'نامعلوم'}
+پیدائش کا وقت: ${birthTime || 'نامعلوم'}
+پیدائش کا دن: ${birthDay || 'نامعلوم'}
 سوال کرنے کا دن: ${dayOfQuestion}
 سوال: ${question || 'صارف اس وقت کی سعد یا نحس ساعت اور موزوں کاموں کے بارے میں جاننا چاہتا ہے۔'}
 
@@ -901,30 +685,51 @@ export const TimeScienceSection = ({ onBack }: SectionProps) => {
     };
 
     return (
-        <div className="max-w-3xl mx-auto pb-10">
+        <div className="max-w-xl mx-auto pb-8">
             <BackButton onClick={onBack} />
-            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl p-8 border border-purple-100 dark:border-slate-800">
-                <div className="flex items-center gap-5 mb-10">
-                    <div className="p-5 bg-purple-100 dark:bg-purple-900/30 rounded-3xl text-purple-600 dark:text-purple-400 shadow-inner"><Watch size={40} /></div>
+            <div className="bg-white dark:bg-slate-900 rounded-[1rem] shadow-lg p-5 border border-purple-100 dark:border-slate-800">
+                <div className="flex items-center gap-3 mb-5">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl text-purple-600 dark:text-purple-400 shadow-inner"><Watch size={24} /></div>
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-800 dark:text-white ur-text">علم الساعات</h2>
-                        <p className="text-gray-500 dark:text-slate-400 ur-text">وقت کی تاثیر اور سعد و نحس ساعتوں کا علمی تجزیہ</p>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-white ur-text leading-tight">علم الساعات</h2>
+                        <p className="text-[10px] text-gray-500 dark:text-slate-400 ur-text">وقت کی تاثیر اور سعد و نحس ساعتوں کا علمی تجزیہ</p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-right">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5 text-right">
                     <div className="group">
-                        <label className="block text-right mb-2 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text">آپ کا نام (اردو میں)</label>
-                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full h-14 px-5 rounded-2xl border-2 border-gray-100 dark:border-slate-800 focus:border-purple-500 outline-none text-right text-lg transition-all dark:bg-slate-950 dark:text-white" placeholder="محمد احمد" />
+                        <label className="block text-right mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">آپ کا نام (اردو میں)</label>
+                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-purple-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="محمد احمد" />
                     </div>
                     <div className="group">
-                        <label className="block text-right mb-2 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text">والدہ کا نام (اردو میں)</label>
-                        <input type="text" value={motherName} onChange={(e) => setMotherName(e.target.value)} className="w-full h-14 px-5 rounded-2xl border-2 border-gray-100 dark:border-slate-800 focus:border-purple-500 outline-none text-right text-lg transition-all dark:bg-slate-950 dark:text-white" placeholder="مریم بی بی" />
+                        <label className="block text-right mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">والدہ کا نام (اردو میں)</label>
+                        <input type="text" value={motherName} onChange={(e) => setMotherName(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-purple-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="مریم بی بی" />
+                    </div>
+                    <div className="group md:col-span-2">
+                        <label className="block text-right mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">کل عمر سالوں میں یا تاریخ پیدائش</label>
+                        <input type="text" value={dobOrAge} onChange={(e) => setDobOrAge(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-purple-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="مثلاً: 30 سال یا 1995" />
+                    </div>
+                    <div className="group">
+                        <label className="block text-right mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">وقت پیدائش (اختیاری)</label>
+                        <input type="text" value={birthTime} onChange={(e) => setBirthTime(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-purple-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="مثلاً: صبح 8 بجے" />
+                    </div>
+                    <div className="group">
+                        <label className="block text-right mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">پیدائش کا دن (اختیاری)</label>
+                        <select value={birthDay} onChange={(e) => setBirthDay(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-purple-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white ur-text">
+                            <option value="">منتخب کریں</option>
+                            {urduDays.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                    </div>
+                    <div className="group md:col-span-2">
+                        <label className="block text-right mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">سوال کرنے کا دن</label>
+                        <select value={dayOfQuestion} onChange={(e) => setDayOfQuestion(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-purple-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white ur-text">
+                            {urduDays.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
                     </div>
                 </div>
 
-                <button onClick={handleCalculateTime} disabled={loading || !name} className="w-full py-5 bg-gradient-to-r from-purple-600 to-indigo-700 text-white rounded-3xl font-bold text-xl shadow-xl shadow-purple-200 flex items-center justify-center gap-3 ur-text">
-                    {loading ? <Loader2 className="animate-spin" size={24} /> : <SearchCheck size={24} />} ساعت معلوم کریں
+                <button onClick={handleCalculateTime} disabled={loading || !name} className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-700 text-white rounded-xl font-bold text-base shadow-md active:scale-95 transition-all ur-text flex items-center justify-center gap-2">
+                    {loading ? <Loader2 className="animate-spin" size={18} /> : <SearchCheck size={18} />} ساعت معلوم کریں
                 </button>
 
                 <GenericResult loading={loading} result={result} title="علم الساعات کی روشنی میں وقت کا تجزیہ" />
@@ -933,11 +738,13 @@ export const TimeScienceSection = ({ onBack }: SectionProps) => {
     );
 };
 
+
 export const HoroscopeSection = ({ onBack }: SectionProps) => {
     const [name, setName] = useState('');
     const [motherName, setMotherName] = useState('');
-    const [dob, setDob] = useState('');
-    const [birthDay, setBirthDay] = useState('پیر');
+    const [dobOrAge, setDobOrAge] = useState('');
+    const [birthDay, setBirthDay] = useState('');
+    const [birthTime, setBirthTime] = useState('');
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<string | null>(null);
 
@@ -949,8 +756,9 @@ export const HoroscopeSection = ({ onBack }: SectionProps) => {
         const prompt = `آپ ایک تجربہ کار نجومی (Astrologer) ہیں۔ درج ذیل معلومات کی روشنی میں صارف کا مکمل زائچہ تیار کریں:
 نام: ${name}
 والدہ کا نام: ${motherName || 'نامعلوم'}
-تاریخ پیدائش: ${dob || 'نامعلوم'}
-پیدائش کا دن: ${birthDay}
+تاریخ پیدائش یا عمر: ${dobOrAge || 'نامعلوم'}
+پیدائش کا دن: ${birthDay || 'نامعلوم'}
+پیدائش کا وقت: ${birthTime || 'نامعلوم'}
 ان معلومات کی روشنی میں شخصیت, برج (Zodiac Sign), ستارہ, مستقبل, صحت, محبت اور کاروبار کے بارے میں تفصیلی پیشگوئی اردو میں فراہم کریں۔`;
         
         const res = await generateSpiritualResponse(prompt);
@@ -959,30 +767,45 @@ export const HoroscopeSection = ({ onBack }: SectionProps) => {
     };
 
     return (
-        <div className="max-w-3xl mx-auto pb-10">
+        <div className="max-w-xl mx-auto pb-8">
             <BackButton onClick={onBack} />
-            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl p-8 border border-orange-100 dark:border-slate-800">
-                <div className="flex items-center gap-5 mb-10">
-                    <div className="p-5 bg-orange-100 dark:bg-orange-900/20 rounded-3xl text-orange-600 dark:text-orange-400 shadow-inner"><Star size={40} /></div>
+            <div className="bg-white dark:bg-slate-900 rounded-[1rem] shadow-lg p-5 border border-orange-100 dark:border-slate-800">
+                <div className="flex items-center gap-3 mb-5">
+                    <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-xl text-orange-600 dark:text-orange-400 shadow-inner"><Star size={24} /></div>
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-800 dark:text-white ur-text">زائچہ و نجوم</h2>
-                        <p className="text-gray-500 dark:text-slate-400 ur-text">اپنی پیدائشی تفصیلات درج کریں تاکہ آپ کا درست زائچہ تیار کیا جا سکے</p>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-white ur-text leading-tight">زائچہ و نجوم</h2>
+                        <p className="text-[10px] text-gray-500 dark:text-slate-400 ur-text">پیدائشی تفصیلات درج کریں (دن اور وقت اختیاری ہیں)</p>
                     </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-right">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-right">
                     <div className="group">
-                        <label className="block mb-2 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text">آپ کا نام (اردو میں)</label>
-                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full h-14 px-5 rounded-2xl border-2 border-gray-100 dark:border-slate-800 focus:border-orange-500 outline-none text-right text-lg transition-all dark:bg-slate-950 dark:text-white" placeholder="محمد احمد" />
+                        <label className="block mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">آپ کا نام (اردو میں)</label>
+                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-orange-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="محمد احمد" />
                     </div>
                     <div className="group">
-                        <label className="block mb-2 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text">والدہ کا نام (اردو میں)</label>
-                        <input type="text" value={motherName} onChange={(e) => setMotherName(e.target.value)} className="w-full h-14 px-5 rounded-2xl border-2 border-gray-100 dark:border-slate-800 focus:border-orange-500 outline-none text-right text-lg transition-all dark:bg-slate-950 dark:text-white" placeholder="مریم بی بی" />
+                        <label className="block mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">والدہ کا نام (اردو میں)</label>
+                        <input type="text" value={motherName} onChange={(e) => setMotherName(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-orange-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="مریم بی بی" />
+                    </div>
+                    <div className="group md:col-span-2">
+                        <label className="block mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">تاریخ پیدائش یا کل عمر سالوں میں</label>
+                        <input type="text" value={dobOrAge} onChange={(e) => setDobOrAge(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-orange-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="مثلاً: 1990 یا 34 سال" />
+                    </div>
+                    <div className="group">
+                        <label className="block mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">پیدائش کا دن (اختیاری)</label>
+                        <select value={birthDay} onChange={(e) => setBirthDay(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-orange-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white ur-text">
+                            <option value="">منتخب کریں</option>
+                            {days.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                    </div>
+                    <div className="group">
+                        <label className="block mb-1 font-bold text-gray-700 dark:text-slate-300 mr-2 ur-text text-xs">پیدائش کا وقت (اختیاری)</label>
+                        <input type="text" value={birthTime} onChange={(e) => setBirthTime(e.target.value)} className="w-full h-10 px-4 rounded-lg border-2 border-gray-100 dark:border-slate-800 focus:border-orange-500 outline-none text-right text-base transition-all dark:bg-slate-950 dark:text-white" placeholder="مثلاً: صبح 10 بجے" />
                     </div>
                 </div>
 
-                <button onClick={handleGenerateHoroscope} disabled={loading || !name} className="w-full py-5 mt-8 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-3xl font-bold text-xl shadow-xl ur-text">
-                    {loading ? <Loader2 className="animate-spin" size={24} /> : <Sparkle size={24} />} زائچہ تیار کریں
+                <button onClick={handleGenerateHoroscope} disabled={loading || !name} className="w-full py-2.5 mt-5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl font-bold text-base shadow-md active:scale-95 transition-all ur-text flex items-center justify-center gap-2">
+                    {loading ? <Loader2 className="animate-spin" size={18} /> : <Sparkle size={18} />} زائچہ تیار کریں
                 </button>
 
                 <GenericResult loading={loading} result={result} title="آپ کا مفصل زائچہ و نجومی پیشگوئی" />

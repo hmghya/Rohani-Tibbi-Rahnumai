@@ -1,10 +1,9 @@
 export enum AppSection {
   Home = 'Home',
-  PrayerTimes = 'PrayerTimes',
   Numerology = 'Numerology',
   TimeScience = 'TimeScience',
   Horoscope = 'Horoscope',
-  Spiritual = 'Spiritual',
+  DreamInterpretation = 'DreamInterpretation',
   Wazaif = 'Wazaif',
   BlackMagic = 'BlackMagic',
   Documents = 'Documents',
